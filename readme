@@ -1,0 +1,28 @@
+// frontend
+npm run dev
+
+npm create vite@latest . -- --template react
+npm install
+
+npm install axios react-router-dom
+npm install react-icons
+npm install chart.js react-chartjs-2
+
+npm install @react-oauth/google
+
+// backend
+
+
+npm run dev
+
+npm init -y
+npm install express mysql2 cors dotenv bcryptjs jsonwebtoken multer helmet morgan express-validator
+npm install -D nodemon
+npm install sequelize
+npm install bcrypt
+npm install multer
+
+
+npm install razorpay crypto
+
+npm install xlsx

@@ -1,0 +1,531 @@
+:root {
+  --primary-blue: #008DFF;
+  --table-header-blue: #003EAB;
+  --dark-text: #333333;
+  --light-text: #666669;
+  --bg-card: #f8f9fa;
+  --border-color: #e5e7eb;
+  --accent-blue: #003EAB;
+}
+
+.policy-page-wrapper {
+  width: 100%;
+  max-width: 1300px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  color: var(--dark-text);
+  box-sizing: border-box;
+}
+
+.policy-grid-layout {
+  display: grid;
+  grid-template-columns: 3.2fr 1.1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+/* ==========================================
+   LEFT MAIN COLUMN CONTENT BLOCKS
+   ========================================== */
+.policy-main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Base Card Block Architecture */
+.policy-card-block {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 23px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-color);
+}
+
+.policy-card-block h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0 0 20px 0;
+  color: #1d1d1ff2;
+}
+
+/* Blue Top Hero Banner */
+.policy-hero-banner {
+  background-color: var(--primary-blue);
+  color: #ffffff;
+  border-radius: 12px;
+  padding: 40px 48px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  overflow: hidden;
+}
+
+.hero-text-content h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin: 0 0 12px 0;
+  letter-spacing: -0.5px;
+}
+
+.hero-text-content p {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  margin: 0;
+}
+
+/* Section Clauses */
+.intro-text {
+  font-size: 1.05rem;
+  color: var(--light-text);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.policy-clause {
+  margin-bottom: 24px;
+}
+
+.policy-clause h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+
+.policy-clause p {
+  font-size: 1rem;
+  color: var(--light-text);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Workflow Step Grid */
+.policy-steps-workflow {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 32px;
+}
+
+.workflow-card {
+  background-color: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 24px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 180px;
+  text-align: center;
+}
+
+.card-step-num {
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-bottom: 16px;
+}
+
+.card-icon-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: auto;
+}
+
+/* ==========================================
+   WARRANTY MATRIX TABLE SECTION
+   ========================================== */
+.responsive-table-container {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.policy-matrix-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.95rem;
+  background-color: #ffffff;
+}
+
+.policy-matrix-table th {
+  background-color: var(--table-header-blue);
+  color: #ffffff;
+  padding: 14px 20px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.policy-matrix-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--light-text);
+}
+
+.policy-matrix-table tr:last-child td {
+  border-bottom: none;
+}
+
+.policy-matrix-table .condition-cell {
+  font-weight: 500;
+  color: var(--dark-text);
+  width: 40%;
+}
+
+.policy-matrix-table .sub-text {
+  display: inline-block;
+  font-size: 0.88rem;
+  color: #86868b;
+  font-weight: 400;
+}
+
+.policy-matrix-table .empty-cell {
+  background-color: #fafafa;
+}
+
+/* ==========================================
+   SHIPPING RETURNS TEXT SETTINGS
+   ========================================== */
+.shipping-returns-section p {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--light-text);
+  margin: 0 0 16px 0;
+}
+
+.shipping-returns-section p:last-child {
+  margin-bottom: 0;
+}
+
+.shipping-returns-section .shipping-address-text {
+  color: var(--dark-text);
+  background-color: #f5f5f7;
+  padding: 14px 18px;
+  border-radius: 6px;
+  line-height: 1.5;
+}
+
+/* ==========================================
+   FAQS ACCORDION COMPONENT
+   ========================================== */
+.faq-accordion-item {
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.faq-question-trigger {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 20px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1d1d1ff2;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.faq-question-trigger:hover {
+  opacity: 0.85;
+}
+
+.accordion-arrow {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  margin-left: 16px;
+}
+
+.accordion-arrow::before,
+.accordion-arrow::after {
+  content: '';
+  position: absolute;
+  background-color: var(--accent-blue);
+  transition: transform 0.25s ease;
+}
+
+/* Horizontal line of chevron */
+.accordion-arrow::before {
+  top: 5px;
+  left: 0;
+  width: 12px;
+  height: 2px;
+}
+
+/* Vertical line making it a '+' minus switcher or standard arrow */
+.faq-accordion-item.active .accordion-arrow::after {
+  transform: rotate(90deg);
+  opacity: 0;
+}
+
+.faq-answer-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s cubic-bezier(0, 1, 0, 1);
+}
+
+.faq-accordion-item.active .faq-answer-content {
+  max-height: 1000px;
+  transition: max-height 0.3s cubic-bezier(1, 0, 1, 0);
+}
+
+.faq-answer-content p {
+  padding: 0 0 20px 0;
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--light-text);
+}
+
+/* ==========================================
+   RIGHT SIDEBAR COLUMN WIDGET
+   ========================================== */
+.help-sticky-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 28px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-color);
+  position: sticky;
+  top: 24px;
+}
+
+.help-sticky-card h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin: 0 0 24px 0;
+}
+
+.contact-links-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.contact-links-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 1rem;
+}
+
+.contact-icon {
+  font-size: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+}
+
+.contact-links-list a {
+  color: var(--dark-text);
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.contact-links-list a:hover {
+  color: var(--primary-blue);
+}
+
+.contact-links-list .email-link {
+  font-size: 0.95rem;
+  word-break: break-all;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 28px 0;
+}
+
+.help-sticky-card h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+}
+
+.social-action-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.social-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.social-btn:hover {
+  transform: translateY(-2px);
+  opacity: 0.9;
+}
+
+.platform-x {
+  background-color: #000000;
+}
+
+.platform-wa {
+  background-color: #128c7e;
+}
+
+/* ==========================================
+   ONLINE STORE SECTION ACCENT
+   ========================================== */
+.online-store-section {
+  background: #fafcff; /* very light blue tint */
+}
+
+
+
+.policy-card-block p {
+  color: var(--light-text);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin: 9px 0;
+}
+
+/* ==========================================
+   FULL-WIDTH SECTIONS WRAPPER
+   ========================================== */
+.policy-fullwidth-sections {
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.policy-fullwidth-sections .policy-card-block {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* ==========================================
+   STORE LOCATION CARDS (FLEX)
+   ========================================== */
+.store-locations-section {
+  background: #f8f9fa;
+}
+
+.store-cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  margin-top: 8px;
+}
+
+.store-card {
+  flex: 1 1 calc(50% - 12px);
+  min-width: 260px;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 24px 28px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.store-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
+}
+
+.store-card h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin: 0 0 12px 0;
+  color: #1d1d1ff2;
+  display: flex;
+    align-items: center;
+}
+
+.store-icon {
+    font-size: 1.2rem;
+    background-color : var(--accent-blue);
+    flex-shrink: 0;
+    color: #ffffff;
+    padding: 6px;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    margin-right: 12px;
+}
+
+.store-card p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--light-text);
+  margin: 0;
+}
+
+/* ==========================================
+   RESPONSIVE MEDIA INTERFACES
+   ========================================== */
+@media (max-width: 992px) {
+  .policy-grid-layout {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  
+  .policy-steps-workflow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .store-card {
+    flex: 1 1 100%;
+  }
+}
+
+@media (max-width: 576px) {
+  .policy-card-block {
+    padding: 24px;
+  }
+
+  .policy-hero-banner {
+    flex-direction: column;
+    text-align: center;
+    gap: 24px;
+    padding: 32px 24px;
+  }
+  
+  .hero-text-content h1 {
+    font-size: 1.8rem;
+  }
+
+  .policy-steps-workflow {
+    grid-template-columns: 1fr;
+  }
+
+  .policy-matrix-table th, 
+  .policy-matrix-table td {
+    padding: 12px 14px;
+  }
+
+  .store-cards-container {
+    flex-direction: column;
+  }
+}
+
+.policy-page-wrapper li{
+      color: var(--light-text);
+    font-size: 1rem;
+    line-height: 1.6;
+}

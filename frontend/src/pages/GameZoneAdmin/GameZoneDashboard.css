@@ -1,0 +1,222 @@
+/* Container & Layout */
+.game-zone-container {
+  padding: 24px;
+  background-color: #0f172a; /* Dark background */
+  min-height: 100vh;
+  color: #f8fafc;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Header */
+.gz-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.gz-title {
+  font-size: 28px;
+  font-weight: 800;
+  margin: 0 0 8px 0;
+  background: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.gz-subtitle {
+  color: #94a3b8;
+  margin: 0;
+  font-size: 14px;
+}
+
+/* Primary Button */
+.gz-btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.gz-btn-primary:hover {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
+}
+
+/* Stats Grid */
+.gz-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+
+.gz-stat-card {
+  background: #1e293b;
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #334155;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.gz-stat-card:hover {
+  transform: translateY(-5px);
+}
+
+/* Glow Effects for Cards */
+.glow-purple:hover { box-shadow: 0 10px 30px rgba(168, 85, 247, 0.2); border-color: #a855f7; }
+.glow-green:hover { box-shadow: 0 10px 30px rgba(34, 197, 94, 0.2); border-color: #22c55e; }
+.glow-pink:hover { box-shadow: 0 10px 30px rgba(236, 72, 153, 0.2); border-color: #ec4899; }
+
+.gz-stat-icon {
+  font-size: 32px;
+  padding: 16px;
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.text-purple { color: #a855f7; }
+.text-green { color: #22c55e; }
+.text-pink { color: #ec4899; }
+
+.gz-stat-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.gz-stat-info p {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+/* Games Section */
+.gz-section-header h2 {
+  font-size: 20px;
+  color: #f8fafc;
+  margin-bottom: 20px;
+  border-left: 4px solid #a855f7;
+  padding-left: 12px;
+}
+
+.gz-games-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 24px;
+}
+
+.gz-game-card {
+  background: #1e293b;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid #334155;
+  transition: all 0.3s ease;
+}
+
+.gz-game-card:hover {
+  transform: scale(1.02);
+  border-color: #64748b;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.gz-game-img-wrapper {
+  position: relative;
+  height: 160px;
+  width: 100%;
+}
+
+.gz-game-img-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.gz-status-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  backdrop-filter: blur(4px);
+}
+
+.status-online { background: rgba(34, 197, 94, 0.8); color: white; }
+.status-offline { background: rgba(239, 68, 68, 0.8); color: white; }
+
+.gz-game-content {
+  padding: 20px;
+}
+
+.gz-game-content h3 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+  color: #f8fafc;
+}
+
+.gz-game-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #94a3b8;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.gz-game-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.gz-btn-icon {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.2s;
+}
+
+.gz-btn-icon.play {
+  background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+  color: white;
+}
+.gz-btn-icon.play:hover {
+  box-shadow: 0 0 15px rgba(217, 70, 239, 0.5);
+}
+
+.gz-btn-icon.edit {
+  background: #334155;
+  color: #f8fafc;
+}
+.gz-btn-icon.edit:hover {
+  background: #475569;
+}

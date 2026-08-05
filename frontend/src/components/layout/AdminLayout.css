@@ -1,0 +1,139 @@
+/* AdminLayout.css */
+.admin-layout {
+  display: flex;
+  height: 100vh; 
+  background-color: #f8fafc;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  color: #0f172a;
+  overflow: hidden;
+}
+
+.admin-main {
+  flex: 1 1 0%; /* CRITICAL: Forces flexbox to respect the available space exactly */
+  min-width: 0; /* Prevents overflow blowouts */
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.admin-content {
+  flex: 1;
+  padding: 15px;
+  overflow-y: auto; 
+  overflow-x: hidden;
+  will-change: width; /* Tells browser to optimize for width changes */
+}
+
+.btn-primary {
+    background: #f97316;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 30px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.btn-primary:hover {
+  background: #ea580c;
+  transform: translateY(-1px);
+}
+.btn-secondary {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #e2e8f0;
+}
+.search-input {
+  width: 100%;
+  padding: 10px 12px 10px 36px;
+  border: 1px solid #e2e8f0;
+  border-radius: 30px;
+  font-size: 14px;
+  background: white;
+  transition: all 0.2s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+}
+
+/* Filters Bar */
+.filters-bar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.search-wrapper {
+  flex: 1;
+  position: relative;
+  max-width: 400px;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 16px;
+}
+
+
+.filter-wrapper {
+  position: relative;
+}
+
+.filter-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+  font-size: 14px;
+  pointer-events: none;
+}
+
+.filter-select {
+  padding: 10px 12px 10px 32px;
+  border: 1px solid #e2e8f0;
+  border-radius: 30px;
+  font-size: 14px;
+  background: white;
+  cursor: pointer;
+  appearance: none;
+  min-width: 160px;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: #f97316;
+}
+
+  .header-title h1 {
+    font-size: 25px;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 4px 0;
+    letter-spacing: -0.5px;
+  }
+
+  .header-title p {
+    font-size: 13px;
+    color: #64748b;
+    margin: 0;
+  }

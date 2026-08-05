@@ -1,0 +1,514 @@
+/* Orders Page Container */
+.orders-page {
+  background: #f8fafc;
+  min-height: 100vh;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+/* Header */
+.orders-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.modal-item-image{
+  height: 100px;
+}
+
+/* Cancel reasons */
+.cancel-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.cancel-reason-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  transition: background 0.2s;
+}
+
+.cancel-reason-option:hover {
+  background: #f9fafb;
+}
+
+.cancel-reason-option input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #2563eb;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.btn-cancel-modal,
+.btn-confirm-cancel {
+  padding: 10px 24px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-cancel-modal {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.btn-cancel-modal:hover {
+  background: #d1d5db;
+}
+
+.btn-confirm-cancel {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-confirm-cancel:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.btn-confirm-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Action buttons */
+.actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.action-btn.view-btn {
+  color: #2563eb;
+}
+.action-btn.view-btn:hover {
+  background: #dbeafe;
+}
+
+.action-btn.cancel-btn {
+  color: #ef4444;
+}
+.action-btn.cancel-btn:hover:not(:disabled) {
+  background: #fee2e2;
+}
+.action-btn.cancel-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.action-btn.delete-btn {
+  color: #6b7280;
+}
+.action-btn.delete-btn:hover {
+  background: #f3f4f6;
+}
+
+/* Status badge for pickup_initiated */
+.status-pickup {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+/* Status select dropdown – same colors */
+.status-select.status-pickup {
+  background: #fef3c7;
+  color: #92400e;
+}
+.status-pickup-initiated {
+  background-color: #8b5cf6;
+  color: #fff;
+}
+.status-pickup-initiated::before {
+  content: '🚚 ';
+}
+/* Orders Table */
+.orders-table-container {
+  background: white;
+  border-radius: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+}
+
+.orders-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.orders-table th {
+  text-align: left;
+  padding: 16px 20px;
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.orders-table td {
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #1e293b;
+}
+
+.orders-table tr:hover td {
+  background: #fef9f5;
+}
+
+.order-id {
+  font-weight: 700;
+  color: #f97316;
+  font-family: monospace;
+}
+
+.customer-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.customer-name {
+  font-weight: 600;
+}
+
+.customer-email {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.order-amount {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* Status Select */
+.status-select-wrapper {
+  min-width: 120px;
+}
+
+.status-select {
+  padding: 6px 12px;
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  background: transparent;
+  appearance: none;
+  text-align: center;
+  width: 100%;
+}
+
+.status-select.status-delivered,
+.status-delivered {
+  background: #dcfce7;
+  color: #15803d;
+}
+.status-select.status-processing,
+.status-processing {
+  background: #fff3e3;
+  color: #ea580c;
+}
+.status-select.status-shipped,
+.status-shipped {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+.status-select.status-pending,
+.status-pending {
+  background: #fef9c3;
+  color: #a16207;
+}
+.status-select.status-cancelled,
+.status-cancelled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.status-select.status-default {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+/* Actions Buttons */
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.action-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+}
+
+.view-btn {
+  color: #3b82f6;
+}
+.view-btn:hover {
+  background: #eff6ff;
+}
+
+.delete-btn {
+  color: #ef4444;
+}
+.delete-btn:hover {
+  background: #fef2f2;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.page-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 14px;
+  color: #64748b;
+}
+
+.no-data {
+  text-align: center;
+  padding: 48px !important;
+  color: #94a3b8;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 24px;
+  width: 90%;
+  max-width: 800px;
+  max-height: 85vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+  color: #0f172a;
+}
+
+.close-modal {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 4px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.close-modal:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.modal-body {
+  padding: 24px;
+}
+
+.details-section {
+  margin-bottom: 28px;
+}
+
+.details-section h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 16px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #f97316;
+  display: inline-block;
+}
+
+.details-section p {
+  margin: 8px 0;
+  font-size: 14px;
+}
+
+.details-section p strong {
+  width: 130px;
+  display: inline-block;
+  color: #475569;
+}
+
+.modal-status-select {
+  margin-left: 10px;
+  padding: 4px 12px;
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+
+/* Items Table inside modal */
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.items-table th,
+.items-table td {
+  padding: 10px 8px;
+  text-align: left;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.items-table th {
+  background: #f8fafc;
+  font-weight: 600;
+  color: #475569;
+}
+
+.items-table tfoot td {
+  border-bottom: none;
+  padding-top: 12px;
+}
+
+.total-label {
+  text-align: right;
+}
+
+.total-amount {
+  font-size: 16px;
+  color: #f97316;
+}
+
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-secondary {
+  background: #f1f5f9;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: #e2e8f0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .orders-page {
+    padding: 16px;
+  }
+  .orders-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .filters-bar {
+    flex-direction: column;
+  }
+  .search-wrapper {
+    max-width: 100%;
+  }
+  .filter-wrapper {
+    width: 100%;
+  }
+  .filter-select {
+    width: 100%;
+  }
+  .orders-table th,
+  .orders-table td {
+    padding: 12px;
+  }
+  .actions {
+    flex-direction: column;
+    gap: 4px;
+  }
+  .modal-content {
+    width: 95%;
+    margin: 16px;
+  }
+}

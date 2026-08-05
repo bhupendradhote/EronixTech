@@ -1,0 +1,36 @@
+index
+cart 
+checkout
+wishlist
+profile
+orders
+category
+product details
+log in 
+register
+about
+contact
+Cancellation and Return
+Refund
+Payment Option
+
+Gaming Zone
+Tournaments
+Game Store
+Contact
+
+-----------backend apis------
+
+Categories
+Sub-Categories
+Brands
+Orders
+Products
+Customers
+Banners
+wishlist
+razorpay
+user auth
+addresses
+admin auth
+Reviews

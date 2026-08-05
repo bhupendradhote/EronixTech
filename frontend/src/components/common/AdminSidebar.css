@@ -1,0 +1,173 @@
+.admin-sidebar {
+  flex: 0 0 235px; 
+  width: 235px; 
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e2e8f0;
+  height: 100%;
+  transition: flex 0.3s cubic-bezier(0.4, 0, 0.2, 1), width 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+  z-index: 100;
+  overflow: hidden; /* Clips the fading text perfectly */
+}
+
+.admin-sidebar.collapsed { flex: 0 0 80px; width: 80px; }
+
+.admin-brand {
+  padding: 24px; 
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+  height: 80px; 
+  box-sizing: border-box; 
+  white-space: nowrap;
+}
+
+.brand-logo {
+  min-width: 32px; 
+  height: 32px; 
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  border-radius: 8px; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  color: white; 
+  box-shadow: 0 4px 10px rgba(249, 115, 22, 0.2);
+}
+
+.brand-text {
+  font-size: 20px; 
+  font-weight: 700; 
+  color: #0f172a; 
+  margin: 0;
+  transition: opacity 0.2s ease; /* Fades smoothly */
+}
+
+.admin-nav { 
+  padding: 12px 16px; 
+  flex: 1; 
+  overflow-y: auto; 
+  overflow-x: hidden; 
+  transition: padding 0.3s ease; 
+}
+
+.admin-nav::-webkit-scrollbar { display: none; }
+.admin-nav ul { list-style: none; padding: 0; margin: 0; }
+.admin-nav li { margin-bottom: 4px; }
+
+.admin-nav li a {
+  display: flex; 
+  align-items: center; 
+  padding: 10px 16px; 
+  color: #64748b; 
+  text-decoration: none;
+  font-size: 14px; 
+  font-weight: 500; 
+  border-radius: 8px; 
+  transition: background-color 0.2s, padding 0.3s; 
+  white-space: nowrap;
+}
+
+.nav-icon { 
+  font-size: 20px; 
+  min-width: 20px; 
+  margin-right: 14px; 
+  transition: margin 0.3s ease; 
+}
+
+.link-text { transition: opacity 0.2s ease; }
+.admin-nav li a:hover { background-color: #f8fafc; color: #0f172a; }
+.admin-nav li a.active { background-color: #fff7ed; color: #ea580c; font-weight: 600; }
+.nav-divider { height: 1px; background-color: #f1f5f9; margin: 16px 0; }
+
+/* === COLLAPSED STATE === */
+.admin-sidebar.collapsed .brand-text { opacity: 0; pointer-events: none; }
+.admin-sidebar.collapsed .admin-nav { padding: 12px 8px; }
+.admin-sidebar.collapsed .admin-nav li a { padding: 12px 0; justify-content: center; }
+.admin-sidebar.collapsed .nav-icon { margin-right: 0; }
+.admin-sidebar.collapsed .link-text { opacity: 0; width: 0; visibility: hidden; }
+
+/* === DROPDOWN STYLES === */
+.sidebar-dropdown {
+  width: 100%;
+}
+
+.sidebar-dropdown-btn {
+  width: 100%;
+  box-sizing: border-box; /* Ensures padding doesn't overflow container */
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  user-select: none;
+}
+
+.sidebar-dropdown-btn:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.dropdown-left {
+  display: flex;
+  align-items: center;
+}
+
+.dropdown-arrow {
+  font-size: 16px;
+}
+
+.submenu {
+  margin-top: 4px !important;
+  margin-left: 22px !important;
+  border-left: 2px solid #e2e8f0 !important;
+  /* padding-left: 12px !important; */
+}
+
+.submenu li {
+  margin: 4px 0;
+}
+
+.submenu li a {
+  display: block;
+  padding: 8px 12px;
+  color: #64748b;
+  font-size: 13px;
+  border-radius: 6px;
+  text-decoration: none;
+}
+
+.submenu li a:hover {
+  background: #f8fafc;
+}
+
+.submenu li a.active {
+  background: #fff7ed;
+  color: #ea580c;
+  font-weight: 600;
+}
+
+/* Hide elements when sidebar collapsed */
+.admin-sidebar.collapsed .submenu {
+  display: none;
+}
+
+.admin-sidebar.collapsed .dropdown-arrow {
+  display: none;
+}
+
+/* Fix missing padding logic so collapsed button aligns with standard links */
+.admin-sidebar.collapsed .sidebar-dropdown-btn {
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.admin-sidebar.collapsed .dropdown-left .nav-icon {
+  margin-right: 0;
+}

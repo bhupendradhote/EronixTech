@@ -1,0 +1,32 @@
+/* frontend/src/components/layout/AdminGameZoneLayout.css */
+
+.gz-layout {
+  display: flex;
+  min-height: 100vh;
+  background: #0f172a;
+}
+
+.gz-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+.gz-content {
+  flex: 1;
+  background: #0f172a;
+  color: #f8fafc;
+  min-height: calc(100vh - 72px);
+}
+
+/* Responsive: stack sidebar on small screens */
+@media (max-width: 768px) {
+  .gz-layout {
+    flex-direction: column;
+  }
+
+  .gz-content {
+    padding: 16px;
+  }
+}

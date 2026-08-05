@@ -1,0 +1,336 @@
+/* ==========================================================================
+   Contact Us Page Styles - Enhanced UI
+   ========================================================================== */
+
+.contact-page-wrapper {
+  background-color: #f4f7f9; /* Slightly cooler, modern grey */
+  padding: 40px 0 80px;
+  font-family: 'Inter', sans-serif;
+  color: #333;
+}
+
+
+/* --- Hero Section --- */
+.contact-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 50px 60px;
+  margin-bottom: 40px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+}
+
+.hero-text-content {
+  flex: 1;
+  max-width: 600px;
+}
+
+.contact-title {
+  color: #d9232d; /* Brand Red */
+  font-size: 42px;
+  font-weight: 800;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+}
+
+.contact-subtitle {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 20px;
+}
+
+.contact-desc {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #4b5563;
+}
+
+.hero-illustration {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.hero-illustration img {
+  max-width: 100%;
+  height: auto;
+  max-height: 300px;
+  object-fit: contain;
+  filter: drop-shadow(0 10px 15px rgba(0,0,0,0.05));
+}
+
+/* --- Action Cards Section --- */
+.contact-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-bottom: 50px;
+}
+
+.action-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.action-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+}
+
+.action-card-content {
+  flex: 1;
+  z-index: 2;
+}
+
+.action-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.icon-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px; /* Rounded square looks more modern */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.red-icon {
+  background-color: #fef2f2;
+  color: #d9232d;
+}
+
+.dark-icon {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+.action-header h4 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.action-card p {
+  font-size: 15px;
+  color: #6b7280;
+  margin-bottom: 24px;
+  max-width: 250px;
+  line-height: 1.5;
+}
+
+/* Button Shared Styles */
+.btn-chat, .btn-view-all {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  padding: 12px 28px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-chat {
+  background-color: #d9232d;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(217, 35, 45, 0.2);
+}
+
+.btn-chat:hover {
+  background-color: #be1c25;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(217, 35, 45, 0.3);
+}
+
+.btn-view-all {
+  background-color: #fee2e2;
+  color: #d9232d;
+}
+
+.btn-view-all:hover {
+  background-color: #fca5a5;
+  transform: translateY(-2px);
+}
+
+.action-card-illustration {
+ position: absolute;
+    right: 27px;
+    bottom: 63px;
+    width: 206px;
+    z-index: 1;
+    opacity: 0.95;
+    transition: transform 0.3s ease;
+}
+
+.action-card:hover .action-card-illustration {
+  transform: scale(1.05);
+}
+
+.action-card-illustration img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* --- Addresses Section --- */
+.office-addresses {
+  margin-bottom: 50px;
+}
+
+.section-title {
+  font-size: 24px;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 24px;
+}
+
+.address-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.address-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 35px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.address-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+  border-color: #fee2e2;
+}
+
+.address-card .badge {
+  display: inline-block;
+  background-color: #f3f4f6;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 30px;
+  margin-bottom: 20px;
+}
+
+.location-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 14px;
+}
+
+.location-icon {
+  color: #d9232d;
+}
+
+.address-card p {
+  font-size: 15px;
+  line-height: 1.7;
+  color: #6b7280;
+}
+
+/* --- Footer Contact Info --- */
+.contact-footer-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 40px 0;
+  margin-top: 40px;
+  border-top: 2px dashed #e5e7eb;
+}
+
+.support-phone-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.support-phone-wrapper p {
+  font-size: 18px;
+  color: #374151;
+  margin: 0;
+}
+
+.support-phone-wrapper strong {
+  color: #d9232d;
+  font-weight: 800;
+  font-size: 22px;
+}
+
+.contact-footer-info .call-timings {
+  font-size: 14px;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   Responsive Adjustments
+   ========================================================================== */
+
+@media (max-width: 992px) {
+  .contact-hero {
+    flex-direction: column;
+    text-align: center;
+    padding: 40px 30px;
+  }
+  .hero-text-content {
+    margin-bottom: 40px;
+  }
+  .hero-illustration {
+    justify-content: center;
+  }
+  .address-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .contact-actions {
+    grid-template-columns: 1fr;
+  }
+  .support-phone-wrapper {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 576px) {
+  .contact-title {
+    font-size: 32px;
+  }
+  .contact-subtitle {
+    font-size: 18px;
+  }
+  .address-grid {
+    grid-template-columns: 1fr;
+  }
+  .action-card-illustration {
+    display: none; 
+  }
+}

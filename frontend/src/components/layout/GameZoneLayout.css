@@ -1,0 +1,11 @@
+.game-zone-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #121212; /* Dark theme to fit the gaming vibe */
+}
+
+.game-zone-main-content {
+  flex: 1;
+  width: 100%;
+}
