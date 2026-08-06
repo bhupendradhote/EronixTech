@@ -91,11 +91,11 @@ const Orders = () => {
 
   const statusOptions = [
     { value: 'all', label: 'All Orders' },
-    { value: 'pending', label: 'Pending' },
+    // { value: 'pending', label: 'Pending' },
     { value: 'processing', label: 'Processing' },
-    { value: 'pickup_initiated', label: 'Pickup Initiated' },
-    { value: 'shipped', label: 'Shipped' },
-    { value: 'delivered', label: 'Delivered' },
+    // { value: 'pickup_initiated', label: 'Pickup Initiated' },
+    // { value: 'shipped', label: 'Shipped' },
+    // { value: 'delivered', label: 'Delivered' },
     { value: 'cancelled', label: 'Cancelled' },
   ];
 

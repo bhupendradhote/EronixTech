@@ -1,8 +1,6 @@
 // backend/utils/shiprocketHelper.js
 
-const SHIPROCKET_BASE_URL =
-  process.env.SHIPROCKET_BASE_URL ||
-  "https://apiv2.shiprocket.in";
+const SHIPROCKET_BASE_URL = process.env.SHIPROCKET_BASE_URL || "https://apiv2.shiprocket.in";
 
 let cachedToken = null;
 let tokenCreatedAt = null;
@@ -14,50 +12,30 @@ let tokenCreatedAt = null;
 const getShiprocketToken = async () => {
   const tokenLifetime = 8 * 24 * 60 * 60 * 1000;
 
-  if (
-    cachedToken &&
-    tokenCreatedAt &&
-    Date.now() - tokenCreatedAt < tokenLifetime
-  ) {
+  if (cachedToken && tokenCreatedAt && Date.now() - tokenCreatedAt < tokenLifetime) {
     return cachedToken;
   }
 
-  if (
-    !process.env.SHIPROCKET_EMAIL ||
-    !process.env.SHIPROCKET_PASSWORD
-  ) {
-    throw new Error(
-      "Shiprocket email or password is missing in .env"
-    );
+  if (!process.env.SHIPROCKET_EMAIL || !process.env.SHIPROCKET_PASSWORD) {
+    throw new Error("Shiprocket email or password is missing in .env");
   }
 
-  const response = await fetch(
-    `${SHIPROCKET_BASE_URL}/v1/external/auth/login`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email: process.env.SHIPROCKET_EMAIL,
-        password: process.env.SHIPROCKET_PASSWORD,
-      }),
-    }
-  );
+  const response = await fetch(`${SHIPROCKET_BASE_URL}/v1/external/auth/login`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      email: process.env.SHIPROCKET_EMAIL,
+      password: process.env.SHIPROCKET_PASSWORD,
+    }),
+  });
 
   const data = await response.json();
 
   if (!response.ok || !data.token) {
-    console.error(
-      "Shiprocket authentication error:",
-      data
-    );
-
-    throw new Error(
-      data.message ||
-        data.error ||
-        "Shiprocket authentication failed"
-    );
+    console.error("Shiprocket authentication error:", data);
+    throw new Error(data.message || data.error || "Shiprocket authentication failed");
   }
 
   cachedToken = data.token;
@@ -69,68 +47,45 @@ const getShiprocketToken = async () => {
 /**
  * Common Shiprocket API request function.
  */
-const shiprocketRequest = async (
-  endpoint,
-  options = {},
-  retry = true
-) => {
+const shiprocketRequest = async (endpoint, options = {}, retry = true) => {
   const token = await getShiprocketToken();
 
-  const response = await fetch(
-    `${SHIPROCKET_BASE_URL}${endpoint}`,
-    {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-        ...(options.headers || {}),
-      },
-    }
-  );
+  const response = await fetch(`${SHIPROCKET_BASE_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+      ...(options.headers || {}),
+    },
+  });
 
   if (response.status === 401 && retry) {
     cachedToken = null;
     tokenCreatedAt = null;
-
-    return shiprocketRequest(
-      endpoint,
-      options,
-      false
-    );
+    return shiprocketRequest(endpoint, options, false);
   }
 
   let data;
-
   try {
     data = await response.json();
   } catch (error) {
     data = {
-      message:
-        "Invalid response received from Shiprocket",
+      message: "Invalid response received from Shiprocket",
     };
   }
 
   if (!response.ok) {
     console.error("Shiprocket API error:", data);
-
     const validationErrors = data.errors
       ? Object.entries(data.errors)
           .map(([field, messages]) => {
-            const messageText = Array.isArray(messages)
-              ? messages.join(", ")
-              : String(messages);
-
+            const messageText = Array.isArray(messages) ? messages.join(", ") : String(messages);
             return `${field}: ${messageText}`;
           })
           .join(" | ")
       : "";
 
-    throw new Error(
-      validationErrors ||
-        data.message ||
-        data.error ||
-        "Shiprocket API request failed"
-    );
+    throw new Error(validationErrors || data.message || data.error || "Shiprocket API request failed");
   }
 
   return data;
@@ -139,388 +94,145 @@ const shiprocketRequest = async (
 /**
  * Create a new Shiprocket order.
  */
-const createShiprocketOrder = async (
-  orderData,
-  itemsData
-) => {
+const createShiprocketOrder = async (orderData, itemsData) => {
   if (!orderData) {
     throw new Error("Order data is missing");
   }
 
-  if (
-    !Array.isArray(itemsData) ||
-    itemsData.length === 0
-  ) {
+  if (!Array.isArray(itemsData) || itemsData.length === 0) {
     throw new Error("Order items are missing");
   }
 
-  const orderId =
-    orderData.order_number ||
-    orderData.order_id ||
-    orderData.id;
+  const orderId = orderData.order_number || orderData.order_id || orderData.id;
 
   if (!orderId) {
     throw new Error("Order ID is missing");
   }
 
-  const customerName =
-    orderData.customer_name ||
-    orderData.billing_customer_name ||
-    orderData.name ||
-    orderData.first_name ||
-    "Customer";
+  const customerName = orderData.customer_name || orderData.billing_customer_name || orderData.name || orderData.first_name || "Customer";
+  const customerLastName = orderData.customer_last_name || orderData.billing_last_name || orderData.last_name || "";
+  const billingAddress = orderData.shipping_address_line1 || orderData.shipping_address_line_1 || orderData.billing_address || orderData.address || orderData.address_line1 || orderData.address_line_1 || "";
+  const billingAddress2 = orderData.shipping_address_line2 || orderData.shipping_address_line_2 || orderData.billing_address_2 || orderData.address_2 || orderData.address_line2 || orderData.address_line_2 || "";
+  const billingCity = orderData.shipping_city || orderData.billing_city || orderData.city || "";
+  const billingPincode = String(orderData.shipping_pincode || orderData.billing_pincode || orderData.pincode || orderData.postal_code || "");
+  const billingState = orderData.shipping_state || orderData.billing_state || orderData.state || "";
+  const billingCountry = orderData.shipping_country || orderData.billing_country || orderData.country || "India";
+  const billingEmail = orderData.customer_email || orderData.billing_email || orderData.email || "";
+  const billingPhone = String(orderData.customer_phone || orderData.billing_phone || orderData.phone || orderData.mobile || "");
 
-  const customerLastName =
-    orderData.customer_last_name ||
-    orderData.billing_last_name ||
-    orderData.last_name ||
-    "";
+  if (!billingAddress) throw new Error("Customer shipping address is missing");
+  if (!billingCity) throw new Error("Customer shipping city is missing");
+  if (!billingState) throw new Error("Customer shipping state is missing");
+  if (!billingPincode) throw new Error("Customer shipping pincode is missing");
+  if (!billingPhone) throw new Error("Customer phone number is missing");
 
-  const billingAddress =
-    orderData.shipping_address_line1 ||
-    orderData.shipping_address_line_1 ||
-    orderData.billing_address ||
-    orderData.address ||
-    orderData.address_line1 ||
-    orderData.address_line_1 ||
-    "";
+  const orderItems = itemsData.map((item, index) => {
+    const productName = item.product_name || item.name || item.title || "Product";
+    const sku = item.product_sku || item.sku || item.product_id || item.id || `SKU-${orderId}-${index + 1}`;
+    const quantity = Number(item.quantity || item.units || item.qty || 1);
 
-  const billingAddress2 =
-    orderData.shipping_address_line2 ||
-    orderData.shipping_address_line_2 ||
-    orderData.billing_address_2 ||
-    orderData.address_2 ||
-    orderData.address_line2 ||
-    orderData.address_line_2 ||
-    "";
-
-  const billingCity =
-    orderData.shipping_city ||
-    orderData.billing_city ||
-    orderData.city ||
-    "";
-
-  const billingPincode = String(
-    orderData.shipping_pincode ||
-      orderData.billing_pincode ||
-      orderData.pincode ||
-      orderData.postal_code ||
-      ""
-  );
-
-  const billingState =
-    orderData.shipping_state ||
-    orderData.billing_state ||
-    orderData.state ||
-    "";
-
-  const billingCountry =
-    orderData.shipping_country ||
-    orderData.billing_country ||
-    orderData.country ||
-    "India";
-
-  const billingEmail =
-    orderData.customer_email ||
-    orderData.billing_email ||
-    orderData.email ||
-    "";
-
-  const billingPhone = String(
-    orderData.customer_phone ||
-      orderData.billing_phone ||
-      orderData.phone ||
-      orderData.mobile ||
-      ""
-  );
-
-  if (!billingAddress) {
-    throw new Error(
-      "Customer shipping address is missing"
+    const sellingPrice = Number(
+      item.selling_price !== undefined ? item.selling_price : 
+      (item.unit_price || item.price || item.sale_price || 0)
     );
-  }
 
-  if (!billingCity) {
-    throw new Error(
-      "Customer shipping city is missing"
-    );
-  }
-
-  if (!billingState) {
-    throw new Error(
-      "Customer shipping state is missing"
-    );
-  }
-
-  if (!billingPincode) {
-    throw new Error(
-      "Customer shipping pincode is missing"
-    );
-  }
-
-  if (!billingPhone) {
-    throw new Error(
-      "Customer phone number is missing"
-    );
-  }
-
-  const orderItems = itemsData.map(
-    (item, index) => {
-      const productName =
-        item.product_name ||
-        item.name ||
-        item.title ||
-        "Product";
-
-      const sku =
-        item.product_sku ||
-        item.sku ||
-        item.product_id ||
-        item.id ||
-        `SKU-${orderId}-${index + 1}`;
-
-      const quantity = Number(
-        item.quantity ||
-          item.units ||
-          item.qty ||
-          1
-      );
-
-      const sellingPrice = Number(
-        item.unit_price ||
-          item.price ||
-          item.selling_price ||
-          item.sale_price ||
-          0
-      );
-
-      if (sellingPrice <= 0) {
-        throw new Error(
-          `Invalid selling price for product: ${productName}`
-        );
-      }
-
-      return {
-        name: productName,
-
-        sku: String(sku),
-
-        units:
-          quantity > 0 ? quantity : 1,
-
-        selling_price: sellingPrice,
-
-        discount: Number(
-          item.discount || 0
-        ),
-
-        tax: Number(item.tax || 0),
-
-        hsn: String(
-          item.hsn ||
-            item.hsn_code ||
-            ""
-        ),
-      };
+    if (sellingPrice <= 0) {
+      throw new Error(`Invalid selling price for product: ${productName}`);
     }
-  );
 
-  const paymentMethod = String(
-    orderData.payment_method ||
-      orderData.payment_mode ||
-      ""
-  ).toUpperCase();
+    return {
+      name: productName,
+      sku: String(sku),
+      units: quantity > 0 ? quantity : 1,
+      selling_price: sellingPrice,
+      discount: Number(item.discount || 0),
+      tax: Number(item.tax || 0),
+      hsn: String(item.hsn || item.hsn_code || ""),
+    };
+  });
+
+  const paymentMethod = String(orderData.payment_method || orderData.payment_mode || "").toUpperCase();
+
+  // 🔥 FIX: Dynamically calculate the subtotal exactly as Shiprocket expects it 
+  // (Sum of all item selling prices * units)
+  const calculatedSubTotal = orderItems.reduce((sum, item) => {
+    return sum + (item.selling_price * item.units);
+  }, 0);
 
   const payload = {
     order_id: String(orderId),
-
-    order_date: new Date()
-      .toISOString()
-      .slice(0, 19)
-      .replace("T", " "),
-
-    pickup_location:
-      process.env.SHIPROCKET_PICKUP_LOCATION ||
-      "Primary",
-
-    billing_customer_name:
-      customerName,
-
-    billing_last_name:
-      customerLastName,
-
-    billing_address:
-      billingAddress,
-
-    billing_address_2:
-      billingAddress2,
-
-    billing_city:
-      billingCity,
-
-    billing_pincode:
-      billingPincode,
-
-    billing_state:
-      billingState,
-
-    billing_country:
-      billingCountry,
-
-    billing_email:
-      billingEmail,
-
-    billing_phone:
-      billingPhone,
-
+    order_date: new Date().toISOString().slice(0, 19).replace("T", " "),
+    pickup_location: process.env.SHIPROCKET_PICKUP_LOCATION || "Primary",
+    billing_customer_name: customerName,
+    billing_last_name: customerLastName,
+    billing_address: billingAddress,
+    billing_address_2: billingAddress2,
+    billing_city: billingCity,
+    billing_pincode: billingPincode,
+    billing_state: billingState,
+    billing_country: billingCountry,
+    billing_email: billingEmail,
+    billing_phone: billingPhone,
     shipping_is_billing: true,
+    order_items: orderItems,
+    payment_method: paymentMethod === "COD" ? "COD" : "Prepaid",
+    
+    shipping_charges: Number(orderData.shipping_fee || orderData.shipping_charge || orderData.shipping_charges || 0),
+    giftwrap_charges: Number(orderData.giftwrap_charges || 0),
+    transaction_charges: Number(orderData.transaction_charges || 0),
 
-    order_items:
-      orderItems,
+    total_discount: Number(orderData.coupon_discount || orderData.discount || orderData.total_discount || 0) + Number(orderData.coin_discount || 0),
 
-    payment_method:
-      paymentMethod === "COD"
-        ? "COD"
-        : "Prepaid",
-
-    shipping_charges: Number(
-      orderData.shipping_fee ||
-        orderData.shipping_charge ||
-        orderData.shipping_charges ||
-        0
-    ),
-
-    giftwrap_charges: Number(
-      orderData.giftwrap_charges || 0
-    ),
-
-    transaction_charges: Number(
-      orderData.transaction_charges || 0
-    ),
-
-    total_discount: Number(
-      orderData.discount ||
-        orderData.total_discount ||
-        0
-    ),
-
-    sub_total: Number(
-      orderData.subtotal ||
-        orderData.sub_total ||
-        orderData.total_amount ||
-        orderData.amount ||
-        0
-    ),
-
-    length: Number(
-      orderData.length_cm ||
-        orderData.length ||
-        10
-    ),
-
-    breadth: Number(
-      orderData.width_cm ||
-        orderData.breadth ||
-        orderData.width ||
-        10
-    ),
-
-    height: Number(
-      orderData.height_cm ||
-        orderData.height ||
-        10
-    ),
-
-    weight: Number(
-      orderData.total_weight_kg ||
-        orderData.weight_kg ||
-        orderData.weight ||
-        0.5
-    ),
+    // 🔥 FIX: Pass the perfectly calculated sum instead of the raw DB subtotal
+    sub_total: Number(calculatedSubTotal.toFixed(2)),
+    
+    length: Number(orderData.length_cm || orderData.length || 10),
+    breadth: Number(orderData.width_cm || orderData.breadth || orderData.width || 10),
+    height: Number(orderData.height_cm || orderData.height || 10),
+    weight: Number(orderData.total_weight_kg || orderData.weight_kg || orderData.weight || 0.5),
   };
 
-  console.log(
-    "📦 Shiprocket payload:",
-    JSON.stringify(payload, null, 2)
-  );
+  console.log("📦 Shiprocket payload:", JSON.stringify(payload, null, 2));
 
-  const data = await shiprocketRequest(
-    "/v1/external/orders/create/adhoc",
-    {
-      method: "POST",
-      body: JSON.stringify(payload),
-    }
-  );
+  const data = await shiprocketRequest("/v1/external/orders/create/adhoc", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 
-  console.log(
-    "✅ Shiprocket order response:",
-    data
-  );
+  console.log("✅ Shiprocket order response:", data);
 
   return {
     status: true,
-
-    shiprocket_order_id:
-      data.order_id || null,
-
-    shiprocket_shipment_id:
-      data.shipment_id || null,
-
-    shiprocket_awb:
-      data.awb_code || null,
-
-    courier_company:
-      data.courier_name || null,
-
-    tracking_url:
-      data.tracking_url || null,
-
-    // Temporary compatibility with existing FShip database fields
-    aporderid:
-      data.order_id || null,
-
-    waybill:
-      data.awb_code || null,
-
-    awb_code:
-      data.awb_code || null,
-
+    shiprocket_order_id: data.order_id || null,
+    shiprocket_shipment_id: data.shipment_id || null,
+    shiprocket_awb: data.awb_code || null,
+    courier_company: data.courier_name || null,
+    tracking_url: data.tracking_url || null,
+    aporderid: data.order_id || null,
+    waybill: data.awb_code || null,
+    awb_code: data.awb_code || null,
     raw: data,
   };
 };
 
 /**
  * Cancel an existing Shiprocket order.
- * @param {string|number} shiprocketOrderId - Shiprocket order ID (returned as `order_id` on creation)
- * @returns {Promise<object>} - Shiprocket API response
  */
 const cancelShiprocketOrder = async (shiprocketOrderId) => {
   if (!shiprocketOrderId) {
     throw new Error("Shiprocket order ID is required");
   }
 
-  // Shiprocket expects { "ids": [order_id] } for cancellation
-  const data = await shiprocketRequest(
-    "/v1/external/orders/cancel",
-    {
-      method: "POST",
-      body: JSON.stringify({ ids: [String(shiprocketOrderId)] }),
-    }
-  );
+  const data = await shiprocketRequest("/v1/external/orders/cancel", {
+    method: "POST",
+    body: JSON.stringify({ ids: [String(shiprocketOrderId)] }),
+  });
 
   return data;
 };
 
 /**
- * Check courier serviceability for a given pincode and package dimensions.
- * @param {Object} params
- * @param {string} params.pickupPincode - Sender's pincode (default from env)
- * @param {string} params.deliveryPincode - Receiver's pincode (required)
- * @param {number} params.weight - Total weight in kg
- * @param {number} params.length - Length in cm
- * @param {number} params.breadth - Breadth in cm
- * @param {number} params.height - Height in cm
- * @returns {Promise<Object>} - Serviceability response from Shiprocket
+ * Check courier serviceability.
  */
 const checkServiceability = async ({
   pickupPincode = process.env.SHIPROCKET_PICKUP_PINCODE || "110001",
@@ -535,7 +247,6 @@ const checkServiceability = async ({
     throw new Error("Delivery pincode is required");
   }
 
-  // Build query string
   const queryParams = new URLSearchParams({
     pickup_postcode: pickupPincode,
     delivery_postcode: String(deliveryPincode),
@@ -550,7 +261,6 @@ const checkServiceability = async ({
 
   console.log("🔍 Checking Shiprocket serviceability:", endpoint);
 
-  // Use shiprocketRequest with GET (it will add the Bearer token)
   const data = await shiprocketRequest(endpoint, {
     method: "GET"
   });
@@ -558,35 +268,12 @@ const checkServiceability = async ({
   return data;
 };
 
- /* Create a return order in Shiprocket.
+/**
+ * Create a return order in Shiprocket.
  */
 const createReturnOrder = async (returnData) => {
   const requiredFields = [
-    'order_id',
-    'order_date',
-    'channel_id',
-    'pickup_customer_name',
-    'pickup_address',
-    'pickup_city',
-    'pickup_state',
-    'pickup_country',
-    'pickup_pincode',
-    'pickup_email',
-    'pickup_phone',
-    'shipping_customer_name',
-    'shipping_address',
-    'shipping_city',
-    'shipping_country',
-    'shipping_pincode',
-    'shipping_state',
-    'shipping_phone',
-    'order_items',
-    'payment_method',
-    'sub_total',
-    'length',
-    'breadth',
-    'height',
-    'weight',
+    'order_id', 'order_date', 'channel_id', 'pickup_customer_name', 'pickup_address', 'pickup_city', 'pickup_state', 'pickup_country', 'pickup_pincode', 'pickup_email', 'pickup_phone', 'shipping_customer_name', 'shipping_address', 'shipping_city', 'shipping_country', 'shipping_pincode', 'shipping_state', 'shipping_phone', 'order_items', 'payment_method', 'sub_total', 'length', 'breadth', 'height', 'weight',
   ];
 
   const missing = requiredFields.filter((field) => !returnData[field]);
@@ -723,4 +410,3 @@ module.exports = {
   getDefaultChannelId,
   getShiprocketOrderDetails,
 };
-
