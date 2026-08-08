@@ -377,21 +377,435 @@ body {
   .tb-brand-item { flex: 0 0 33.33%; padding: 15px 0; }
   .tb-brand-item::after { display: none; }
 }
-
-@media (max-width: 480px) {
-     .electrical-brands {
-        width: 100%;
-        padding: 15px 5px;
-    }
-
-    .section-head h2 {
-    font-size: 15px;
+/* ============================================================
+   QUICK CATEGORY ROW + THREE PROMO BANNERS BELOW HERO
+   ============================================================ */
+.home-quick-categories {
+  display: grid;
+  grid-template-columns: repeat(9, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0 14px;
 }
 
-.view-all-btn {
+.home-quick-category-card {
+  min-width: 0;
+  min-height: 132px;
+  padding: 12px 8px 10px;
+  background: #ffffff;
+  border: 1px solid #e4eaf2;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  text-decoration: none;
+  transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+.home-quick-category-card:hover {
+  transform: translateY(-4px);
+  border-color: #009dff;
+  box-shadow: 0 10px 25px rgba(0, 90, 200, 0.12);
+}
+
+.home-quick-category-image {
+  width: 72px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 7px;
+}
+
+.home-quick-category-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.home-quick-category-title {
+  width: 100%;
+  color: #1f2937;
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.home-quick-category-link {
+  margin-top: 4px;
+  color: #0077e6;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.home-view-all-card {
+  justify-content: center;
+  gap: 11px;
+}
+
+.home-view-all-icon {
+  display: grid;
+  grid-template-columns: repeat(2, 15px);
+  gap: 5px;
+}
+
+.home-view-all-icon span {
+  width: 15px;
+  height: 15px;
+  background: #505967;
+  border-radius: 3px;
+}
+
+.home-feature-promos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0 0 26px;
+}
+
+.home-feature-promo-card {
+  display: block;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #081335;
+  box-shadow: 0 6px 18px rgba(3, 18, 59, 0.12);
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.home-feature-promo-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 26px rgba(3, 18, 59, 0.2);
+}
+
+.home-feature-promo-card img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2.3 / 1;
+  object-fit: cover;
+}
+
+@media (max-width: 1200px) {
+  .home-quick-categories {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .home-quick-categories {
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    padding-bottom: 8px;
+    scrollbar-width: none;
+  }
+
+  .home-quick-categories::-webkit-scrollbar {
+    display: none;
+  }
+
+  .home-quick-category-card {
+    flex: 0 0 118px;
+    min-height: 124px;
+  }
+
+  .home-feature-promos {
+    display: flex;
+    overflow-x: auto;
+    gap: 10px;
+    padding-bottom: 8px;
+    scrollbar-width: none;
+  }
+
+  .home-feature-promos::-webkit-scrollbar {
+    display: none;
+  }
+
+  .home-feature-promo-card {
+    flex: 0 0 82%;
+  }
+}
+
+/* ============================================================
+   MOBILE FIX: TOP BRANDS & RELATED CATEGORIES
+   Prevents dynamic brands/trust badges/category cards overlapping
+   ============================================================ */
+
+/* Keep every child constrained to the available grid/flex width */
+.electrical-section-wrapper,
+.electrical-container,
+.electrical-top-row,
+.electrical-brands,
+.electrical-categories,
+.brand-slider-wrapper,
+.brand-circles-scroll {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.electrical-brands {
+  width: auto;
+  flex: 0 0 30%;
+  overflow: hidden;
+}
+
+.brand-circles-scroll {
+  flex: 1 1 auto;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+
+.brand-item {
+  flex: 0 0 72px;
+  width: 72px;
+  min-width: 72px;
+  scroll-snap-align: start;
+}
+
+.brand-item .circle {
+  flex: 0 0 auto;
+}
+
+.trust-badges {
+  width: 100%;
+  min-width: 0;
+}
+
+.trust-badge,
+.tb-title,
+.tb-sub {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.electrical-categories {
+  min-width: 0;
+}
+
+.ec-card,
+.ec-img,
+.ec-text {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.ec-img img {
+  max-width: 100%;
+}
+
+/* Tablet */
+@media (max-width: 1180px) {
+  .electrical-top-row {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .electrical-brands {
+    flex: none;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .brand-slider-wrapper {
+    width: 100%;
+  }
+}
+
+/* Mobile */
+@media (max-width: 760px) {
+  .electrical-section-wrapper {
+    margin: 28px 0;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  .electrical-section-wrapper .section-head {
+    align-items: center;
+    gap: 10px;
+  }
+
+  .electrical-section-wrapper .section-head h2 {
+    min-width: 0;
+    max-width: calc(100% - 125px);
+    font-size: 17px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .electrical-top-row {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    gap: 14px;
+    margin-bottom: 18px;
+  }
+
+  .electrical-brands {
+    flex: none;
+    width: 100%;
+    max-width: 100%;
+    min-height: auto;
+    padding: 18px 14px;
+    border-radius: 14px;
+    overflow: hidden;
+  }
+
+  .electrical-brands h3 {
+    width: 100%;
+    margin: 0 0 14px;
+    font-size: 13px;
+    line-height: 1.35;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* Slider arrows are hidden globally on mobile, so remove their reserved padding */
+  .brand-slider-wrapper {
+    display: block;
+    width: 100%;
+    margin: 0 0 18px;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .brand-circles-scroll {
+    display: flex;
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 100%;
+    gap: 12px;
+    padding: 4px 2px 10px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .brand-circles-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .brand-item {
+    flex: 0 0 72px;
+    width: 72px;
+    min-width: 72px;
+    gap: 7px;
+    scroll-snap-align: start;
+  }
+
+  .brand-item .circle {
+    width: 58px;
+    height: 58px;
+    padding: 7px;
+  }
+
+  .brand-item span {
+    display: block;
+    width: 100%;
+    font-size: 10px;
+    line-height: 1.2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .trust-badges {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 16px 10px;
+    padding-top: 18px;
+  }
+
+  .trust-badge {
+    width: 100%;
+    min-width: 0;
+    padding: 2px;
+  }
+
+  .trust-badge svg {
+    width: 25px;
+    height: 25px;
+  }
+
+  .tb-title {
     font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .tb-sub {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+
+  .electrical-categories {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 10px;
+  }
+
+  .ec-card {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .ec-img {
+    min-height: 112px;
+    padding: 12px;
+  }
+
+  .ec-img img {
+    width: 100%;
+    max-width: 110px;
+    height: 92px;
+  }
+
+  .ec-text {
+    padding: 12px;
+  }
+
+  .ec-text h4 {
+    width: 100%;
+    max-width: 100%;
+    font-size: 12px;
+  }
+
+  .explore-link {
+    font-size: 11px;
+  }
+
+  .electrical-products-wrapper {
+    padding: 12px 0 12px 12px;
+    overflow: hidden;
+  }
+
+  .electrical-products-wrapper .slider-wrapper {
+    padding: 0;
+  }
 }
-.tb-brand-text {
-    font-size: 15px;
+
+/* Very small phones */
+@media (max-width: 380px) {
+  .electrical-brands {
+    padding: 16px 12px;
+  }
+
+  .brand-item {
+    flex-basis: 68px;
+    width: 68px;
+    min-width: 68px;
+  }
+
+  .electrical-categories {
+    grid-template-columns: 1fr;
+  }
 }
-}
+

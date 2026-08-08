@@ -7,7 +7,7 @@ require('dotenv').config();
 // Initialize Razorpay
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
-  key_secret: process.env.RAZORPAY_SECRET_KEY,
+  key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
 // Create Order (Prepaid Flow Step 1)
@@ -51,7 +51,7 @@ exports.verifyPayment = async (req, res) => {
     const sign = `${razorpay_order_id}|${razorpay_payment_id}`;
 
     const expectedSign = crypto
-      .createHmac('sha256', process.env.RAZORPAY_SECRET_KEY)
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(sign)
       .digest('hex');
 

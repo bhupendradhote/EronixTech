@@ -8,7 +8,7 @@ import Layout from '../../../components/layout/Layout';
 // Components & Modals
 import HeroBanner from './HeroBanner';
 import AuthModal from '../../User/Auth/AuthModal';
-import CompareBar from '../../../components/CompareBar/CompareBar'; // 👈 ADDED
+import CompareBar from '../../../components/CompareBar/CompareBar'; 
 
 // API Services
 import productService from '../../../services/productService';
@@ -24,10 +24,9 @@ import { useCompare } from '../../../context/CompareContext'; // ✅ FIXED
 
 // Fallback Images
 import defaultImg from '../../../assets/images/products/pr1.png';
-import goldBanner from '../../../assets/images/Gold-Banner-desktop.webp';
-import cellbellGif from '../../../assets/images/CELLBELL-desktop.gif';
-import mezoniteGold from '../../../assets/images/Mezonite-Gold-desktop.webp';
-import bannerAndDeal from '../../../assets/images/Bannerndeal.webp';
+import gamingZonePromo from '../../../assets/images/home/1.png';
+import buildPcPromo from '../../../assets/images/home/2.png';
+import businessSolutionsPromo from '../../../assets/images/home/3.png';
 
 // --- Reusable Toast Component ---
 const Toast = ({ message, type, onClose }) => {
@@ -646,26 +645,50 @@ const getProductImage = (product) => {
         
         <HeroBanner banners={heroBanners} />
 
-        <div className="mini-banners">
-          {miniBanners.length > 0 ? (
-            miniBanners.map(banner => (
-              <div className="mini-banner" key={banner.id}>
-                {banner.link_url ? (
-                  <Link to={banner.link_url}><img src={banner.image_url} alt={banner.title} /></Link>
-                ) : (
-                  <img src={banner.image_url} alt={banner.title} />
-                )}
-              </div>
-            ))
-          ) : (
-            <>
-              <div className="mini-banner"><img src={goldBanner} alt="Gold Banner" /></div>
-              <div className="mini-banner"><img src={cellbellGif} alt="Cellbell" /></div>
-              <div className="mini-banner"><img src={mezoniteGold} alt="Mezonite Gold" /></div>
-              <div className="mini-banner"><img src={bannerAndDeal} alt="Banner and Deal" /></div>
-            </>
-          )}
-        </div>
+        {/* Quick categories directly below the main banner */}
+        <section className="home-quick-categories" aria-label="Shop by category">
+          {data.categories
+            .slice()
+            .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
+            .slice(0, 8)
+            .map((category, index) => (
+              <Link
+                className="home-quick-category-card"
+                to={`/category/${category.slug}`}
+                key={category.id}
+              >
+                <div className="home-quick-category-image">
+                  <img
+                    src={category.icon_url || category.image_url || defaultImg}
+                    alt={category.name}
+                    onError={(event) => { event.currentTarget.src = defaultImg; }}
+                  />
+                </div>
+                <span className="home-quick-category-title">{category.name}</span>
+                <span className="home-quick-category-link">Explore Now</span>
+              </Link>
+            ))}
+
+          <Link className="home-quick-category-card home-view-all-card" to="/search">
+            <div className="home-view-all-icon" aria-hidden="true">
+              <span></span><span></span><span></span><span></span>
+            </div>
+            <span className="home-quick-category-title">View All</span>
+          </Link>
+        </section>
+
+        {/* Three promotional banners below categories */}
+        <section className="home-feature-promos" aria-label="Featured offers">
+          <Link to="/gaming-zone" className="home-feature-promo-card">
+            <img src={gamingZonePromo} alt="Gaming Zone - Level Up Your Game" />
+          </Link>
+          <Link to="/pc-build" className="home-feature-promo-card">
+            <img src={buildPcPromo} alt="Build Your PC - Your Dream PC, Your Way" />
+          </Link>
+          <Link to="/contact" className="home-feature-promo-card">
+            <img src={businessSolutionsPromo} alt="Business Solutions - Power Your Business" />
+          </Link>
+        </section>
 
         {/* 24-Hour Delivery Cities Section / New Arrivals */}
         <div className="delivery-cities-section">
@@ -703,16 +726,6 @@ const getProductImage = (product) => {
           </div>
         )}
 
-        <div className="promo-strip">
-          {promoBanners.length > 0 ? (
-            promoBanners.map(banner => (
-              <div className="promo-card" key={banner.id}>
-                 <img src={banner.image_url} alt={banner.title} />
-              </div>
-            ))
-          ) : null}
-        </div>
-
         {/* DYNAMIC CATEGORY SECTIONS  */}
         {data.categories.sort((a, b) => a.display_order - b.display_order).map(category => {
           const categoryProducts = activeProducts.filter(p => p.category_id === category.id);
@@ -733,8 +746,8 @@ const getProductImage = (product) => {
                     
                     {/* ---- BRAND SLIDER (NEW) ---- */}
                     <div className="brand-slider-wrapper slider-wrapper">
-                      <button className="slider-btn left" onClick={() => scrollContainer('brandCirclesGrid', 'left')}>‹</button>
-                      <div className="brand-circles-scroll" id="brandCirclesGrid">
+                      <button className="slider-btn left" onClick={() => scrollContainer(`brandCirclesGrid-${category.id}`, 'left')}>‹</button>
+                      <div className="brand-circles-scroll" id={`brandCirclesGrid-${category.id}`}>
                         {data.brands.map(brand => {
                           // Build brand URL using slug if available, else generate from name
                           const brandSlug = brand.slug || generateSlug(brand.name);
@@ -749,7 +762,7 @@ const getProductImage = (product) => {
                           );
                         })}
                       </div>
-                      <button className="slider-btn right" onClick={() => scrollContainer('brandCirclesGrid', 'right')}>›</button>
+                      <button className="slider-btn right" onClick={() => scrollContainer(`brandCirclesGrid-${category.id}`, 'right')}>›</button>
                     </div>
 
                     <div className="trust-badges">

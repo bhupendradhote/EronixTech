@@ -324,3 +324,25 @@
   .build-row-actions { width: 100%; justify-content: flex-end; margin-top: 10px; border-top: 1px solid #f1f5f9; padding-top: 14px; }
   .right-sidebar-panel { width: 100%; }
 }
+
+@media (max-width: 480px) {
+.dashboard-header {
+    font-size: 21px;
+}
+
+.dashboard-subtitle {
+    font-size: 13px;
+}
+.build-list-section {
+    gap: 10px;
+    width: 90%;
+}
+.pc-build-layout {
+    gap: 15px;
+    align-items: center;
+}
+.build-row {
+
+        gap: 6px;
+    }
+}

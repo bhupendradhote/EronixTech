@@ -561,7 +561,7 @@ const Header = () => {
                     </div>
                     <div className='topp-btns'>
                         <div className="explore-cognilix-btn">
-                            <Link to="/business" className="btn-explore">EronixTech Business</Link>
+                            <Link to="/business" className="btn-explore">Eronix Business</Link>
                         </div>
                         <div className="explore-cognilix-btn">
                             <Link to="/gaming-zone" className="btn-explore">Game Zone</Link>
@@ -941,7 +941,7 @@ const Header = () => {
                 {/* Sidebar Footer */}
                 <div className="sidebar-footer">
                     <Link to="/business" className="sidebar-footer-link" onClick={() => setIsSidebarOpen(false)}>
-                        EronixTech Business
+                        Eronix Business
                     </Link>
                 </div>
             </div>

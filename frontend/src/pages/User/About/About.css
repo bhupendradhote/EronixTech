@@ -524,3 +524,15 @@
     padding: 56px;
   }
 }
+
+
+@media (max-width: 480px) {
+     .about-actions {
+        flex-direction: row;
+    }
+
+        .about-hero-stats, .about-trust-strip, .about-values-grid, .about-bottom-benefits {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+}
