@@ -102,26 +102,52 @@ export interface Product {
   updated_at: string;
 }
 
+// Pagination generic response wrapper
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 export interface ProductFilters {
   activeOnly?: boolean;
   categoryId?: number;
   status?: string;
+  limit?: number;
+  page?: number;
 }
 
 // ------------------------------------------------------------------
 // Product Service API Methods
 // ------------------------------------------------------------------
 const productService = {
-  // 1. Get all products (with optional filters)
-  getAllProducts: async (filters: ProductFilters = {}): Promise<Product[]> => {
+  // 1. Get all products (with optional filters, automatically limited to 12)
+  getAllProducts: async (filters: ProductFilters = {}): Promise<PaginatedResponse<Product>> => {
     const params = new URLSearchParams();
 
     if (filters.activeOnly) params.append("active", "true");
     if (filters.categoryId) params.append("category_id", filters.categoryId.toString());
     if (filters.status) params.append("status", filters.status);
+    
+    // Ensure limit strictly defaults to 12 across the board
+    params.append("limit", (filters.limit || 12).toString());
+    
+    // Default page to 1
+    params.append("page", (filters.page || 1).toString());
 
-    const response = await api.get<{ success: boolean; data: Product[] }>(`/products?${params.toString()}`);
-    return response.data.data;
+const response = await api.get<{ 
+      success: boolean; 
+      data: Product[]; 
+      pagination: { total: number; page: number; limit: number; totalPages: number; } 
+    }>(`/products?${params.toString()}`);    
+    return {
+      data: response.data.data,
+      pagination: response.data.pagination
+    };
   },
 
   // 2. Get single product by ID

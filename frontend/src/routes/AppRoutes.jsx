@@ -1,5 +1,5 @@
-import React, { lazy, Suspense } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
+import React, { lazy, Suspense, useEffect } from "react";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 // Auth Services
 import adminAuthService from "../services/adminAuthService";
@@ -64,7 +64,6 @@ const POS = lazy(() => import("../pages/GameZoneAdmin/POS/POS"));
 const Salespersons = lazy(() => import("../pages/GameZoneAdmin/Salespersons/Salespersons")); 
 const SalesHistory = lazy(() => import("../pages/GameZoneAdmin/SalesHistory/SalesHistory"));
 const Players = lazy(() => import("../pages/GameZoneAdmin/Players/Players"));
-
 
 // Coming Soon
 const ComingSoon = lazy(() => import("../pages/User/ComingSoon/ComingSoon"));
@@ -149,6 +148,19 @@ const GameProtectedRoute = ({ children }) => {
 };
 
 /* =========================
+   SCROLL TO TOP HELper (FIXES GLITCH)
+========================= */
+const ScrollToTop = () => {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
+  return null;
+};
+
+/* =========================
    LOADER
 ========================= */
 const PageLoader = () => (
@@ -172,6 +184,7 @@ const PageLoader = () => (
 function AppRoutes() {
   return (
     <Suspense fallback={<PageLoader />}>
+      <ScrollToTop />
       <Routes>
         {/* ================= USER ROUTES ================= */}
         <Route path="/" element={<Home />} />
@@ -251,8 +264,6 @@ function AppRoutes() {
           <Route path="salespersons" element={<Salespersons />} />
           <Route path="sales-history" element={<SalesHistory />} />
           <Route path="players" element={<Players />} />
-
-          {/* Add other game zone admin routes here */}
         </Route>
 
         {/* ================= MAIN ADMIN PANEL ================= */}

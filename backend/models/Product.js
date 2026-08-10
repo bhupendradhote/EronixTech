@@ -22,28 +22,49 @@ class Product {
         return result.insertId;
     }
 
-    // 2. Find all products (With optional filters)
+    // 2. Find all products (With Pagination and optional filters)
     static async findAll(filters = {}) {
         let query = 'SELECT * FROM products WHERE 1=1 AND deleted_at IS NULL';
+        let countQuery = 'SELECT COUNT(*) as total FROM products WHERE 1=1 AND deleted_at IS NULL';
         const values = [];
 
         // Dynamic filtering based on query parameters
         if (filters.status) {
             query += ' AND status = ?';
+            countQuery += ' AND status = ?';
             values.push(filters.status);
         }
         if (filters.category_id) {
             query += ' AND category_id = ?';
+            countQuery += ' AND category_id = ?';
             values.push(filters.category_id);
         }
         if (filters.is_active) {
             query += ' AND status = "active"';
+            countQuery += ' AND status = "active"';
         }
 
         query += ' ORDER BY created_at DESC';
+
+        // --- Pagination Logic ---
+        const limit = filters.limit ? parseInt(filters.limit, 10) : 12; // Default limit 12
+        const page = filters.page ? parseInt(filters.page, 10) : 1;
+        const offset = (page - 1) * limit;
+
+        query += ' LIMIT ? OFFSET ?';
         
+        // Execute the count query with the original values (before adding limit/offset)
+        const [countResult] = await db.execute(countQuery, values);
+        const totalItems = countResult[0].total;
+
+        // Push limit and offset for the main data query (Must be integers for MySQL execute)
+        values.push(limit, offset);
         const [rows] = await db.execute(query, values);
-        return rows;
+        
+        return {
+            data: rows,
+            total: totalItems
+        };
     }
 
     // 3. Find a single product by ID
@@ -53,9 +74,9 @@ class Product {
     }
 
     static async findBySlug(slug) {
-    const [rows] = await db.execute('SELECT * FROM products WHERE slug = ?', [slug]);
-    return rows[0];
-}
+        const [rows] = await db.execute('SELECT * FROM products WHERE slug = ?', [slug]);
+        return rows[0];
+    }
 
     // 4. Update an existing product (Dynamic update)
     static async update(id, updateData) {

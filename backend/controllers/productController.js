@@ -100,19 +100,33 @@ const productController = {
         }
     },
 
-    // 2. Get all products
+    // 2. Get all products (With Pagination)
     getAllProducts: async (req, res) => {
         try {
+            const limit = req.query.limit ? parseInt(req.query.limit, 10) : 12;
+            const page = req.query.page ? parseInt(req.query.page, 10) : 1;
+
             const filters = {
                 status: req.query.status,
                 category_id: req.query.category_id,
-                is_active: req.query.active === 'true'
+                is_active: req.query.active === 'true',
+                limit: limit,
+                page: page
             };
 
-            const products = await Product.findAll(filters);
-            const formattedProducts = products.map(product => parseJSONFields(product));
+            const result = await Product.findAll(filters);
+            const formattedProducts = result.data.map(product => parseJSONFields(product));
 
-            res.status(200).json({ success: true, data: formattedProducts });
+            res.status(200).json({ 
+                success: true, 
+                data: formattedProducts,
+                pagination: {
+                    total: result.total,
+                    page: page,
+                    limit: limit,
+                    totalPages: Math.ceil(result.total / limit)
+                }
+            });
         } catch (error) {
             console.error('Get Products Error:', error);
             res.status(500).json({ success: false, message: 'Error fetching products', error: error.message });
