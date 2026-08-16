@@ -91,11 +91,14 @@ const PcBuild = () => {
       const subs = await buildPcSubCategoryService.getSubCategoriesByCategory(category.id, true);
       
       // Fetch all products for this Build PC category (type = pc_build)
-      const allProducts = await productService.getAllProducts({
+      const response = await productService.getAllProducts({
         activeOnly: true,
         productType: 'pc_build',
         buildPcCategoryId: category.id
       });
+
+      // Extract the product array from the paginated response
+      const allProducts = response.data || [];
 
       const nestedData = await Promise.all(subs.map(async (sub) => {
         const subSubs = await buildPcSubSubCategoryService.getSubSubCategoriesBySubCategory(sub.id, true);
@@ -107,7 +110,7 @@ const PcBuild = () => {
             items: products.map(p => ({
               id: p.id,
               name: p.name,
-              slug: p.slug, // <-- ADDED slug
+              slug: p.slug,
               price: p.selling_price,
               discount_price: p.offer_price || 0,
               icon_url: p.images && p.images.length > 0 ? p.images[0].image_path : null,

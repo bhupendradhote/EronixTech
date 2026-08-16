@@ -76,15 +76,20 @@ const PcPreBuild = () => {
   };
 
   // Fetch pre-built products
+// Fetch pre-built products
   useEffect(() => {
     const fetchPreBuiltProducts = async () => {
       setLoading(true);
       try {
-        const data = await productService.getAllProducts({
+        const response = await productService.getAllProducts({
           activeOnly: true,
           productType: 'pc_pre_build'
         });
-        const filtered = data.filter(p => p.product_type === 'pc_pre_build');
+        
+        // Extract the array from the paginated response wrapper
+        const productList = response.data || [];
+        
+        const filtered = productList.filter(p => p.product_type === 'pc_pre_build');
         setProducts(filtered);
         setFilteredProducts(filtered);
         setError(null);

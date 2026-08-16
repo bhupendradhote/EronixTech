@@ -26,13 +26,15 @@ const Products = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  const fetchProducts = async () => {
+const fetchProducts = async () => {
     setIsLoading(true);
     try {
-      const data = await productService.getAllProducts();
-      setProducts(data);
+      const response = await productService.getAllProducts();
+      // Extract the product array from the paginated response object
+      setProducts(response.data || []);
     } catch (error) {
       console.error("Error fetching products:", error);
+      setProducts([]); // Fallback to an empty array on error
     } finally {
       setIsLoading(false);
     }
