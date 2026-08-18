@@ -75,7 +75,6 @@ const PcPreBuild = () => {
     setToast({ message, type });
   };
 
-  // Fetch pre-built products
 // Fetch pre-built products
   useEffect(() => {
     const fetchPreBuiltProducts = async () => {

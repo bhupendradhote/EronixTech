@@ -183,10 +183,10 @@ const posService = {
   },
 
   // Add to posService object
-getSales: async (filters = {}) => {
-    const res = await api.get('/pos/sales', { params: filters });
-    return res.data;
-},
+  getSales: async (filters = {}) => {
+      const res = await api.get('/pos/sales', { params: filters });
+      return res.data;
+  },
 };
 
 export default posService;
