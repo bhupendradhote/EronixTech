@@ -48,13 +48,13 @@ exports.getDeviceById = async (req, res) => {
 // @access  Admin
 exports.createDevice = async (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, platform = 'PS5' } = req.body;
 
         if (!name) {
             return res.status(400).json({ message: 'Name is required' });
         }
 
-        const deviceId = await GameDevice.create({ name });
+        const deviceId = await GameDevice.create({ name, platform });
         const newDevice = await GameDevice.findById(deviceId);
         res.status(201).json({
             success: true,
@@ -73,7 +73,7 @@ exports.createDevice = async (req, res) => {
 exports.updateDevice = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, is_active } = req.body;
+        const { name, platform, is_active } = req.body;
 
         const existing = await GameDevice.findById(id);
         if (!existing) {
@@ -82,6 +82,7 @@ exports.updateDevice = async (req, res) => {
 
         const updated = await GameDevice.update(id, {
             name: name || existing.name,
+            platform: platform || existing.platform || 'PS5',
             is_active: is_active !== undefined ? is_active : existing.is_active
         });
 

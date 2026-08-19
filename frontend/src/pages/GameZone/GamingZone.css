@@ -3019,40 +3019,4 @@
   .countdown-item { padding: 8px; min-width: 50px; }
   .countdown-item span { font-size: 20px; }
   .hero-title { font-size: 28px; }
-}
-
-.spin {
-  animation: spin 1s linear infinite;
-}
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.loading-spinner, .error-message {
-  text-align: center;
-  padding: 10px;
-  margin: 10px 0;
-}
-
-.error-message {
-  color: #ff4444;
-  background: #ffebee;
-  border-radius: 8px;
-  padding: 12px;
-}
-
-.time-slot.selected {
-  border: 2px solid #4caf50;
-  background: #e8f5e9;
-}
-
-/* Disable button states */
-.btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.confirm-btn:disabled {
-  background: #90a4ae;
-}
+}.time-slot small{display:block;font-size:10px;margin-top:4px;opacity:.8}.time-slot.available small{color:#39d98a}.time-slot.booked small{color:#ef596f}.slot-live-message{font-size:12px;color:#9aa4b2;margin:8px 0}.slot-live-message.error{color:#ef596f}

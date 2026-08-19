@@ -454,9 +454,9 @@ const SalesHistory = () => {
                                         </span>
                                     </td>
                                     <td style={{ textAlign: 'center' }}>
-                                        <button className="btn-warning" onClick={() => window.location.href = `/admin/game-zone/sales/${sale.id}`} title="View Details">
+                                        {/* <button className="btn-warning" onClick={() => window.location.href = `/admin/game-zone/sales/${sale.id}`} title="View Details">
                                             <i className="fas fa-eye"></i>
-                                        </button>
+                                        </button> */}
                                         <button className="btn-primary" onClick={() => printInvoice(sale)} style={{ marginLeft: '4px' }} title="Print Invoice">
                                             <i className="fas fa-print"></i>
                                         </button>

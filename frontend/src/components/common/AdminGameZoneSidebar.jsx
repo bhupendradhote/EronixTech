@@ -15,6 +15,7 @@ import {
   FiMonitor,   // for devices
   FiShoppingCart,
   FiFileText,
+  FiClock,     // NEW IMPORT for Game Bookings
 } from 'react-icons/fi';
 import adminAuthService from '../../services/adminAuthService';
 import './AdminGameZoneSidebar.css';
@@ -41,6 +42,7 @@ const AdminGameZoneSidebar = () => {
     { path: '/admin/game-zone/game-devices', label: 'Game Devices', icon: <FiMonitor /> },
     { path: '/admin/game-zone/tournaments', label: 'Tournaments', icon: <FiCalendar /> },
     { path: '/admin/game-zone/pos', label: 'POS', icon: <FiShoppingCart /> },
+    { path: '/admin/game-zone/game-bookings', label: 'Game Bookings', icon: <FiClock /> }, // NEW LINK ADDED HERE
     { path: '/admin/game-zone/sales-history', label: 'Sales History', icon: <FiFileText /> },
     { path: '/admin/game-zone/players', label: 'Players', icon: <FiUsers /> },
 

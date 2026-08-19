@@ -42,13 +42,12 @@ const availableGameRoutes = require('./routes/availableGameRoutes');
 const quickButtonRoutes = require('./routes/quickButtonRoutes');
 const gameRateRoutes = require('./routes/gameRateRoutes');
 const gameDeviceRoutes = require('./routes/gameDeviceRoutes');
+const gameBookingRoutes = require('./routes/gameBookingRoutes');
 const posRoutes = require('./routes/posRoutes');
 const salespersonRoutes = require('./routes/salespersonRoutes');
 const salesRoutes = require('./routes/salesRoutes');
 const playerRoutes = require('./routes/playerRoutes');
 const warrantyRoutes = require('./routes/warrantyRoutes');
-
-
 
 
 const app = express();
@@ -139,6 +138,7 @@ app.use('/api/quick-buttons', quickButtonRoutes);
 
 app.use('/api/game-rates', gameRateRoutes);
 app.use('/api/game-devices', gameDeviceRoutes);
+app.use('/api/game-bookings', gameBookingRoutes);
 app.use('/api/pos', posRoutes);
 app.use('/api/salespersons', salespersonRoutes);
 app.use('/api/sales', salesRoutes);

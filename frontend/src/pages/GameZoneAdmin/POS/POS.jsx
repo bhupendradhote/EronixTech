@@ -3,6 +3,8 @@ import posService from '../../../services/posService';
 import gameDeviceService from '../../../services/gameDeviceService';
 import gameRateService from '../../../services/gameRateService';
 import gameService from '../../../services/gameService';
+import gameBookingService from '../../../services/gameBookingService';
+import tvSyncService from '../../../services/tvSyncService';
 import './POS.css';
 
 const POS = () => {
@@ -36,9 +38,37 @@ const POS = () => {
   const [paidAmount, setPaidAmount] = useState(0);
   const [terms, setTerms] = useState(`1. Goods once sold cannot be returned or exchanged.\n\n2. Warranty on Products: 1 Year Warranty.\n\n3. Warranty T&C - Warranty does not cover physical damage like liquid spill, water spill, burn, high voltage damage, display broken or crack, display line, display patch, speaker damage, keys broken or any other physical damage. Loss of data, software or any other information.\n\n4. Exclusions from Warranty - Consumable parts such as batteries are not covered.\n\n5. Service Warranty - Covers the cost of service/labour. Any parts replaced will be charged at actuals.\n\n6. Delivery charges may be additional.`);
 
-  // ========== Gaming Sessions ==========
-  const [gamingSessions, setGamingSessions] = useState([]);
+  // ========== Gaming Sessions (Persistent via localStorage) ==========
+  const [gamingSessions, setGamingSessions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pos_live_sessions');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
   const [gamingTimer, setGamingTimer] = useState(null);
+
+  // Ensure the interval runs on mount if there are active sessions restored from storage
+  useEffect(() => {
+    if (gamingSessions.length > 0 && !gamingTimer) {
+      const timer = setInterval(() => {
+        setGamingSessions(prev => [...prev]);
+      }, 1000);
+      setGamingTimer(timer);
+    }
+    return () => {
+      if (gamingTimer) clearInterval(gamingTimer);
+    };
+  }, [gamingSessions.length]);
+
+  // Keep localStorage updated whenever sessions change
+  useEffect(() => {
+    try {
+      localStorage.setItem('pos_live_sessions', JSON.stringify(gamingSessions));
+    } catch (e) { /* ignore */ }
+  }, [gamingSessions]);
 
   // ========== Booking Modal ==========
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
@@ -49,11 +79,15 @@ const POS = () => {
     game: '',
     date: new Date(),
     timeSlot: null,
-    duration: 1, // hours
+    duration: 1,
     customer: '',
+    bookingMode: 'now',
+    startTime: '',
   });
   const [bookingMonth, setBookingMonth] = useState(new Date());
   const [bookingTimeSlots, setBookingTimeSlots] = useState(generateTimeSlots());
+  const [liveTimeline, setLiveTimeline] = useState({ devices: [], bookings: [] });
+  const [bookingConflict, setBookingConflict] = useState('');
 
   // ========== Customer Modal ==========
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
@@ -70,17 +104,33 @@ const POS = () => {
   // ========== Refs ==========
   const searchInputRef = useRef(null);
 
-  // ========== LocalStorage for TV View ==========
-  const SESSIONS_STORAGE_KEY = 'pos_live_sessions';
-
-  // Sync sessions to localStorage
+  // Sync sessions to unified TV display service
   useEffect(() => {
-    try {
-      localStorage.setItem(SESSIONS_STORAGE_KEY, JSON.stringify(gamingSessions));
-    } catch (e) { /* ignore */ }
+    const formattedSessions = gamingSessions.map(s => {
+      const activeMs = s.paused && s.pausedAt 
+        ? Math.max(0, s.pausedAt - s.startedAt - (s.totalPausedMs || 0))
+        : Math.max(0, Date.now() - s.startedAt - (s.totalPausedMs || 0));
+      const mins = Math.max(1, Math.ceil(activeMs / 60000));
+      const amt = Math.ceil((s.rate / 60) * mins);
+      return {
+        id: s.id,
+        device: s.device,
+        customer: s.customer,
+        game: s.game,
+        label: s.label,
+        rate: s.rate,
+        startedAt: s.startedAt,
+        paused: s.paused,
+        pausedAt: s.pausedAt,
+        totalPausedMs: s.totalPausedMs,
+        minutesCount: mins,
+        amountVal: amt,
+        statusText: 'Active Session'
+      };
+    });
+    tvSyncService.updateSessions(formattedSessions);
   }, [gamingSessions]);
 
-  // ========== Generate Time Slots ==========
   function generateTimeSlots() {
     return [
       { time: '10:00 AM', status: 'available' },
@@ -101,7 +151,6 @@ const POS = () => {
     ];
   }
 
-  // ========== Fetch Data ==========
   const fetchQuickButtons = async () => {
     try {
       const data = await posService.getQuickButtons();
@@ -177,7 +226,6 @@ const POS = () => {
     setTimeout(() => searchInputRef.current?.focus(), 100);
   }, []);
 
-  // ========== SYNC CUSTOMER NAME ==========
   useEffect(() => {
     if (selectedCustomer && customers.length > 0) {
       const cust = customers.find(c => String(c.id) === String(selectedCustomer));
@@ -194,7 +242,6 @@ const POS = () => {
     }
   }, [selectedCustomer, customers]);
 
-  // ========== SYNC SALESPERSON NAME ==========
   useEffect(() => {
     if (selectedSalesperson && salespersons.length > 0) {
       const sp = salespersons.find(s => String(s.id) === String(selectedSalesperson));
@@ -208,7 +255,6 @@ const POS = () => {
     }
   }, [selectedSalesperson, salespersons]);
 
-  // ========== Filter Quick Buttons ==========
   useEffect(() => {
     let filtered = quickButtons;
     if (activeType !== 'all') {
@@ -224,7 +270,6 @@ const POS = () => {
     setFilteredButtons(filtered);
   }, [searchTerm, activeType, quickButtons]);
 
-  // ========== Cart Calculations ==========
   const calculateTotals = useCallback(() => {
     let subtotal = 0, taxTotal = 0;
     cart.forEach(item => {
@@ -239,7 +284,6 @@ const POS = () => {
     return { subtotal, taxTotal, discAmt, roundOff, total };
   }, [cart, discountPercent]);
 
-  // ========== Add to Cart ==========
   const addToCart = (button) => {
     const existing = cart.find(item => item.product_id === button.id && item.size === button.type);
     if (existing) {
@@ -265,7 +309,6 @@ const POS = () => {
     }
   };
 
-  // ========== Update Cart Item ==========
   const updateCartItem = (id, field, value) => {
     setCart(cart.map(item => {
       if (item.id === id) {
@@ -279,7 +322,6 @@ const POS = () => {
     setCart(cart.filter(item => item.id !== id));
   };
 
-  // ========== Clear Cart ==========
   const clearCart = () => {
     setCart([]);
     setDiscountPercent(0);
@@ -287,7 +329,6 @@ const POS = () => {
     setPaymentMode('cash');
   };
 
-  // ========== Gaming Sessions ==========
   const formatDuration = (ms) => {
     const total = Math.max(0, Math.floor(ms / 1000));
     const h = String(Math.floor(total / 3600)).padStart(2, '0');
@@ -399,88 +440,11 @@ const POS = () => {
     setGamingSessions(prev => prev.filter(s => s.id !== id));
   };
 
-  // ========== Customer TV View ==========
   const openCustomerDisplay = () => {
-    const popup = window.open(
-      '',
-      'eronixGamingDisplay',
-      'width=1200,height=720,menubar=no,toolbar=no,location=no,status=no,scrollbars=yes'
-    );
-    if (!popup) {
-      alert('Please allow popups for this site');
-      return;
-    }
-
-    const html = `<!doctype html>
-<html>
-<head>
-  <title>Eronix Gaming Display</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <style>
-    *{box-sizing:border-box}
-    html,body{width:100%;height:100%;overflow:hidden}
-    body{margin:0;background:radial-gradient(circle at top left,#123b72 0,#07111f 40%,#050b14 100%);color:#fff;font-family:Segoe UI,Arial,sans-serif}
-    .wrap{height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:14px 24px 18px}
-    .brand{font-size:38px;font-weight:1000;letter-spacing:-1px;margin:0 0 3px;text-align:center;line-height:1.18;text-shadow:0 10px 30px rgba(0,0,0,.35)}
-    .sub{color:#b7cdf0;margin-bottom:12px;font-size:17px;display:flex;align-items:center;gap:8px;line-height:1.2}
-    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:18px;width:100%;max-width:1580px;height:calc(100vh - 92px)}
-    .card{background:linear-gradient(145deg,rgba(45,74,116,.90),rgba(17,29,45,.96));border:1px solid rgba(255,255,255,.18);border-radius:26px;padding:20px 22px 18px;box-shadow:0 22px 48px rgba(0,0,0,.38);position:relative;overflow:hidden;min-width:0;display:flex;flex-direction:column;justify-content:space-between;gap:5px}
-    .card:before{content:"";position:absolute;right:-54px;top:-76px;width:170px;height:170px;border-radius:999px;background:rgba(0,212,255,.16)}
-    h2{margin:0;font-size:31px;position:relative;line-height:1.22;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:1000;letter-spacing:-.5px;padding-top:2px}
-    .player{color:#c1d8ff;font-size:17px;position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;line-height:1.25}
-    .timer{font-size:66px;font-weight:1000;color:#83ffc0;margin:4px 0 2px;letter-spacing:.5px;position:relative;line-height:1.02;white-space:nowrap;text-shadow:0 0 20px rgba(131,255,192,.18)}
-    .rate{color:#c1d8ff;font-size:17px;position:relative;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.25}
-    .mins{font-size:19px;color:#fff;font-weight:1000;position:relative;white-space:nowrap;line-height:1.2}
-    .amt{font-size:40px;font-weight:1000;color:#8ec2ff;position:relative;line-height:1.06;white-space:nowrap}
-    .empty{text-align:center;grid-column:1/4;grid-row:1/3;align-self:center;justify-self:center;width:min(720px,90%)}.empty .timer{font-size:66px}
-    .pulse{display:inline-block;width:14px;height:14px;background:#22c55e;border-radius:999px;margin-right:2px;box-shadow:0 0 0 9px rgba(34,197,94,.13)}
-    .paused .timer{color:#ffdf7b;text-shadow:0 0 20px rgba(255,223,123,.2)}
-    @media(max-width:1500px){.wrap{padding:12px 18px 14px}.brand{font-size:32px}.sub{font-size:14px;margin-bottom:10px}.grid{gap:14px;height:calc(100vh - 78px);max-width:1360px}.card{border-radius:22px;padding:16px 18px 14px;gap:3px}.card:before{width:145px;height:145px;right:-48px;top:-68px}.timer{font-size:52px;margin:2px 0 0}h2{font-size:25px;line-height:1.25}.amt{font-size:34px}.player,.rate{font-size:15px}.mins{font-size:17px}}
-    @media(max-width:1100px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(3,minmax(0,1fr))}.timer{font-size:42px}h2{font-size:22px}.amt{font-size:28px}.wrap{padding:10px}}
-    @media(max-width:720px){.grid{grid-template-columns:1fr;grid-template-rows:none;height:calc(100vh - 70px);overflow:hidden}.card{padding:12px}.timer{font-size:34px}.brand{font-size:22px}.sub{font-size:12px;margin-bottom:6px}}
-  </style>
-</head>
-<body>
-<div class="wrap">
-  <div class="brand">ERONIX GAMING ZONE</div>
-  <div class="sub"><span class="pulse"></span>Live Customer Display</div>
-  <div class="grid" id="displayGrid"></div>
-</div>
-<script>
-  const KEY = 'pos_live_sessions';
-  function safeHtml(str){return String(str||'').replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m];});}
-  function readSessions(){try{return JSON.parse(localStorage.getItem(KEY)||'[]')||[]}catch(e){return []}}
-  function activeMs(s){const now=s.paused&&s.pausedAt?s.pausedAt:Date.now();return Math.max(0,now-(s.startedAt||Date.now())-(s.totalPausedMs||0));}
-  function duration(ms){const t=Math.max(0,Math.floor(ms/1000));const h=String(Math.floor(t/3600)).padStart(2,'0');const m=String(Math.floor((t%3600)/60)).padStart(2,'0');const sec=String(t%60).padStart(2,'0');return h+':'+m+':'+sec;}
-  function minutes(s){return Math.max(1,Math.ceil(activeMs(s)/60000));}
-  function amount(s){return Math.ceil(((s.rate||0)/60)*minutes(s));}
-  function money(n){return '₹'+(parseFloat(n||0)).toFixed(2)}
-  function render(){
-    let list = readSessions().slice(0,6);
-    const grid=document.getElementById('displayGrid');
-    if(!list.length){
-      grid.innerHTML='<div class="card empty"><h2>No Active Session</h2><div class="timer">00:00:00</div><div class="muted">Start a session from POS</div></div>';
-      return;
-    }
-    grid.innerHTML=list.map(function(s){
-      return '<div class="card '+(s.paused?'paused':'')+'"><h2>'+(s.paused?'⏸ ':'🎮 ')+safeHtml(s.device)+'</h2><div class="player">'+safeHtml(s.customer)+' • '+safeHtml(s.game)+'</div><div class="timer">'+duration(activeMs(s))+'</div><div class="rate">'+safeHtml(s.label)+' @ ₹'+safeHtml(s.rate)+'/hr</div><div class="mins">Minutes: '+minutes(s)+'</div><div class="amt">'+money(amount(s))+'</div></div>';
-    }).join('');
-  }
-  render();
-  setInterval(render,1000);
-  window.addEventListener('storage',render);
-<\/script>
-</body>
-</html>`;
-
-    popup.document.open();
-    popup.document.write(html);
-    popup.document.close();
+    tvSyncService.openTvDisplay();
   };
 
-  // ========== Booking Modal Handlers ==========
   const openBookingModal = () => {
-    // Reset booking data with defaults
     setBookingData({
       device: devices.length ? devices[0].name : '',
       rate: rates.length ? rates[0].price : 0,
@@ -490,10 +454,16 @@ const POS = () => {
       timeSlot: null,
       duration: 1,
       customer: customerName || 'Walk-in Player',
+      bookingMode: 'now',
+      startTime: new Date().toTimeString().slice(0,5),
     });
     setBookingMonth(new Date());
     setBookingTimeSlots(generateTimeSlots());
+    setBookingConflict('');
     setIsBookingModalOpen(true);
+    const today = new Date();
+    const ds = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    gameBookingService.getTimeline(ds).then(data => setLiveTimeline({ devices: data.devices || [], bookings: data.bookings || [] })).catch(() => {});
   };
 
   const handleBookingFieldChange = (field, value) => {
@@ -513,7 +483,7 @@ const POS = () => {
   const addBookingToCart = () => {
     const { device, rate, rateLabel, game, date, timeSlot, duration, customer } = bookingData;
     if (!device || !rate || !game || !timeSlot || !duration) {
-      alert('Please fill all required fields (Device, Rate, Game, Time Slot, Duration).');
+      alert('Please fill all required fields.');
       return;
     }
 
@@ -535,16 +505,7 @@ const POS = () => {
       gst: 0,
       discount: 0,
       qty: 1,
-      booking_info: {
-        device,
-        rate,
-        rateLabel,
-        game,
-        date: date.toISOString(),
-        timeSlot: timeSlot.time,
-        duration,
-        customer,
-      },
+      booking_info: { device, rate, rateLabel, game, date: date.toISOString(), timeSlot: timeSlot.time, duration, customer },
     };
 
     setCart(prev => [...prev, cartItem]);
@@ -552,7 +513,31 @@ const POS = () => {
     alert('Booking added to cart!');
   };
 
-  // ========== Calendar Helpers for Booking Modal ==========
+  const startWalkInSession = async () => {
+    const deviceObj = devices.find(d => d.name === bookingData.device);
+    const gameObj = games.find(g => g.name === bookingData.game);
+    const rateObj = rates.find(r => r.name === bookingData.rateLabel) || rates.find(r => Number(r.price) === Number(bookingData.rate));
+    if (!deviceObj) return alert('Please select a valid device.');
+    const d = bookingData.date || new Date();
+    const [hh, mm] = (bookingData.startTime || new Date().toTimeString().slice(0,5)).split(':').map(Number);
+    const start = new Date(d); start.setHours(hh, mm, 0, 0);
+    try {
+      setBookingConflict('');
+      await gameBookingService.createWalkIn({
+        device_id: deviceObj.id, game_id: gameObj?.id || null, rate_id: rateObj?.id || null,
+        customer_name: bookingData.customer || 'Walk-in Customer',
+        start_time: `${start.getFullYear()}-${String(start.getMonth()+1).padStart(2,'0')}-${String(start.getDate()).padStart(2,'0')}T${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}:00+05:30`,
+        duration_minutes: Math.round(Number(bookingData.duration) * 60), total_price: bookingData.rate * bookingData.duration
+      });
+      setIsBookingModalOpen(false);
+      alert(`Session started successfully.`);
+    } catch (e) {
+      const conflict = e.response?.data?.conflict;
+      const msg = conflict ? `Conflict: this device already has a booking.` : (e.response?.data?.message || 'Unable to start walk-in session.');
+      setBookingConflict(msg);
+    }
+  };
+
   const getCalendarDays = (month) => {
     const year = month.getFullYear();
     const m = month.getMonth();
@@ -578,16 +563,8 @@ const POS = () => {
     setBookingMonth(new Date(bookingMonth.getFullYear(), bookingMonth.getMonth() + 1, 1));
   };
 
-  // ========== Customer & Salesperson Handlers ==========
-  const handleCustomerChange = (e) => {
-    const val = e.target.value;
-    setSelectedCustomer(val);
-  };
-
-  const handleSalespersonChange = (e) => {
-    const val = e.target.value;
-    setSelectedSalesperson(val);
-  };
+  const handleCustomerChange = (e) => setSelectedCustomer(e.target.value);
+  const handleSalespersonChange = (e) => setSelectedSalesperson(e.target.value);
 
   const saveNewCustomer = async () => {
     try {
@@ -606,11 +583,8 @@ const POS = () => {
   const handlePaymentMode = (mode) => {
     setPaymentMode(mode);
     const { total } = calculateTotals();
-    if (mode === 'cash') {
-      setPaidAmount(total);
-    } else {
-      setPaidAmount(0);
-    }
+    if (mode === 'cash') setPaidAmount(total);
+    else setPaidAmount(0);
   };
 
   const holdBill = async () => {
@@ -621,16 +595,8 @@ const POS = () => {
     const label = prompt('Label for held bill:', 'Bill ' + new Date().toLocaleTimeString());
     if (!label) return;
     const billData = {
-      cart,
-      gamingSessions,
-      discountPercent,
-      terms,
-      customer: selectedCustomer,
-      salesperson: selectedSalesperson,
-      paymentMode,
-      customerName,
-      customerMobile,
-      salespersonName,
+      cart, gamingSessions, discountPercent, terms, customer: selectedCustomer,
+      salesperson: selectedSalesperson, paymentMode, customerName, customerMobile, salespersonName,
     };
     try {
       await posService.holdBill(label, billData);
@@ -658,9 +624,7 @@ const POS = () => {
         setPaymentMode(bill.paymentMode || 'cash');
         setShowHeldDropdown(false);
         if (bill.gamingSessions && bill.gamingSessions.length && !gamingTimer) {
-          const timer = setInterval(() => {
-            setGamingSessions(prev => [...prev]);
-          }, 1000);
+          const timer = setInterval(() => { setGamingSessions(prev => [...prev]); }, 1000);
           setGamingTimer(timer);
         }
         fetchHeldBills();
@@ -676,37 +640,18 @@ const POS = () => {
       return;
     }
     const { subtotal, taxTotal, discAmt, roundOff, total } = calculateTotals();
-
     const invoiceData = {
-      customer_id: selectedCustomer || null,
-      customer_name: customerName,
-      customer_mobile: customerMobile,
-      salesperson_id: selectedSalesperson || null,
-      salesperson_name: salespersonName,
+      customer_id: selectedCustomer || null, customer_name: customerName, customer_mobile: customerMobile,
+      salesperson_id: selectedSalesperson || null, salesperson_name: salespersonName,
       items: cart.map(item => ({
-        product_id: item.product_id,
-        is_virtual: item.is_virtual,
-        name: item.name,
-        hsn_code: item.hsn_code || '9985',
-        size: item.size || '',
-        color: item.color || '',
-        unit: item.unit || 'pcs',
-        mrp: item.mrp || 0,
-        price: item.price || 0,
-        gst: item.gst || 0,
-        discount: item.discount || 0,
-        qty: item.qty || 1,
+        product_id: item.product_id, is_virtual: item.is_virtual, name: item.name,
+        hsn_code: item.hsn_code || '9985', size: item.size || '', color: item.color || '',
+        unit: item.unit || 'pcs', mrp: item.mrp || 0, price: item.price || 0,
+        gst: item.gst || 0, discount: item.discount || 0, qty: item.qty || 1,
       })),
-      discount_percent: discountPercent,
-      subtotal,
-      tax_amount: taxTotal,
-      round_off: roundOff,
-      total_amount: total,
-      paid_amount: paidAmount || 0,
-      due_amount: Math.max(0, total - paidAmount),
-      payment_mode: paymentMode,
-      notes: '',
-      terms: terms,
+      discount_percent: discountPercent, subtotal, tax_amount: taxTotal, round_off: roundOff,
+      total_amount: total, paid_amount: paidAmount || 0, due_amount: Math.max(0, total - paidAmount),
+      payment_mode: paymentMode, notes: '', terms: terms,
     };
 
     try {
@@ -722,20 +667,16 @@ const POS = () => {
     }
   };
 
-  // ========== Render ==========
   const { subtotal, taxTotal, discAmt, roundOff, total } = calculateTotals();
   const due = Math.max(0, total - paidAmount);
   const change = paidAmount - total;
 
   return (
     <div className="pos-container">
-      {/* Header */}
       <div className="pos-header">
         <div className="pos-header-left">
           <h1><i className="fas fa-gamepad"></i> Premium Gaming POS</h1>
-          <p>
-            <kbd>F1</kbd> New <kbd>F2</kbd> Hold <kbd>F3</kbd> Pay <kbd>F4</kbd> Print
-          </p>
+          <p><kbd>F1</kbd> New <kbd>F2</kbd> Hold <kbd>F3</kbd> Pay <kbd>F4</kbd> Print</p>
         </div>
         <div className="pos-header-actions">
           <button className="btn-outline" onClick={openCustomerDisplay} title="Customer TV View">
@@ -769,9 +710,7 @@ const POS = () => {
       </div>
 
       <div className="pos-layout">
-        {/* Left Panel */}
         <div className="pos-left">
-          {/* Search & Filter */}
           <div className="pos-search-row">
             <div className="pos-search-wrap">
               <i className="fas fa-barcode search-icon"></i>
@@ -793,7 +732,6 @@ const POS = () => {
             </select>
           </div>
 
-          {/* Quick Buttons Grid */}
           <div className="product-grid">
             {filteredButtons.length === 0 ? (
               <div className="empty-grid">No quick buttons found</div>
@@ -809,7 +747,6 @@ const POS = () => {
             )}
           </div>
 
-          {/* Gaming Sessions */}
           <div className="gaming-hero">
             <div className="gaming-top">
               <div className="gaming-title">
@@ -824,47 +761,14 @@ const POS = () => {
                 <div className="gaming-card-title"><b>Start Custom Session</b></div>
                 <div className="session-form">
                   <select id="gDevice" className="ginp">
-                    {devices.length === 0 ? (
-                      <option value="PS5 Station 01">PS5 Station 01</option>
-                    ) : (
-                      devices.map(device => (
-                        <option key={device.id} value={device.name}>{device.name}</option>
-                      ))
-                    )}
+                    {devices.length === 0 ? <option value="PS5 Station 01">PS5 Station 01</option> : devices.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                   </select>
                   <select id="gRate" className="ginp">
-                    {rates.length === 0 ? (
-                      <>
-                        <option value="100|PS5 Gaming - 1 Player">PS5 1 Player - ₹100/hr</option>
-                        <option value="150|PS5 Gaming - 2 Players">PS5 2 Players - ₹150/hr</option>
-                        <option value="200|PS5 Gaming - 3 Players">PS5 3 Players - ₹200/hr</option>
-                        <option value="250|PS5 Gaming - 4 Players">PS5 4 Players - ₹250/hr</option>
-                        <option value="50|Gaming PC">Gaming PC - ₹50/hr</option>
-                        <option value="60|Gaming PC + Gamepad">PC + Gamepad - ₹60/hr</option>
-                      </>
-                    ) : (
-                      rates.map(rate => (
-                        <option key={rate.id} value={`${rate.price}|${rate.name}`}>
-                          {rate.name} - ₹{rate.price}/hr
-                        </option>
-                      ))
-                    )}
+                    {rates.length === 0 ? <option value="100|PS5 Gaming - 1 Player">PS5 1 Player - ₹100/hr</option> : rates.map(rate => <option key={rate.id} value={`${rate.price}|${rate.name}`}>{rate.name} - ₹{rate.price}/hr</option>)}
                   </select>
                   <input id="gCustomer" className="ginp" placeholder="Player name" />
                   <select id="gGame" className="ginp">
-                    {games.length === 0 ? (
-                      <>
-                        <option value="FC 25">FC 25</option>
-                        <option value="GTA V">GTA V</option>
-                        <option value="Fortnite">Fortnite</option>
-                        <option value="Call of Duty">Call of Duty</option>
-                        <option value="FIFA">FIFA</option>
-                      </>
-                    ) : (
-                      games.map(game => (
-                        <option key={game.id} value={game.name}>{game.name}</option>
-                      ))
-                    )}
+                    {games.length === 0 ? <option value="FC 25">FC 25</option> : games.map(game => <option key={game.id} value={game.name}>{game.name}</option>)}
                   </select>
                   <button type="button" className="gaming-start" onClick={startGamingSession}>
                     <i className="fas fa-play"></i> Start Session
@@ -900,18 +804,11 @@ const POS = () => {
             </div>
           </div>
 
-          {/* Cart Table */}
           <div className="cart-wrap">
             <table className="cart-table">
               <thead>
                 <tr>
-                  <th>#</th>
-                  <th>Item</th>
-                  <th>Price</th>
-                  <th>Qty</th>
-                  <th>Disc%</th>
-                  <th>Amount</th>
-                  <th></th>
+                  <th>#</th><th>Item</th><th>Price</th><th>Qty</th><th>Disc%</th><th>Amount</th><th></th>
                 </tr>
               </thead>
               <tbody>
@@ -926,15 +823,8 @@ const POS = () => {
                         <td>
                           <div className="item-name">{item.name}</div>
                           <div className="item-meta">{item.size} {item.color}</div>
-                          {item.booking_info && (
-                            <div className="item-meta" style={{ color: '#a855f7', fontSize: '11px' }}>
-                              <i className="fas fa-calendar-check"></i> {new Date(item.booking_info.date).toLocaleDateString()} {item.booking_info.timeSlot}
-                            </div>
-                          )}
                         </td>
-                        <td>
-                          <input type="number" className="qty-inp" value={item.price} step="0.01" onChange={(e) => updateCartItem(item.id, 'price', parseFloat(e.target.value) || 0)} />
-                        </td>
+                        <td><input type="number" className="qty-inp" value={item.price} step="0.01" onChange={(e) => updateCartItem(item.id, 'price', parseFloat(e.target.value) || 0)} /></td>
                         <td>
                           <div className="qty-control">
                             <button onClick={() => updateCartItem(item.id, 'qty', Math.max(1, item.qty - 1))}>-</button>
@@ -942,9 +832,7 @@ const POS = () => {
                             <button onClick={() => updateCartItem(item.id, 'qty', item.qty + 1)}>+</button>
                           </div>
                         </td>
-                        <td>
-                          <input type="number" className="disc-inp" value={item.discount} min="0" max="100" step="0.5" onChange={(e) => updateCartItem(item.id, 'discount', parseFloat(e.target.value) || 0)} />
-                        </td>
+                        <td><input type="number" className="disc-inp" value={item.discount} min="0" max="100" step="0.5" onChange={(e) => updateCartItem(item.id, 'discount', parseFloat(e.target.value) || 0)} /></td>
                         <td className="item-total">₹{lineTotal.toFixed(2)}</td>
                         <td><button className="del-btn" onClick={() => removeCartItem(item.id)}><i className="fas fa-times"></i></button></td>
                       </tr>
@@ -955,16 +843,13 @@ const POS = () => {
             </table>
           </div>
 
-          {/* Customer, Salesperson, Terms Row */}
           <div className="customer-row">
             <div>
               <label className="lbl">Customer</label>
               <div style={{ display: 'flex', gap: '6px' }}>
                 <select className="finp" value={selectedCustomer} onChange={handleCustomerChange} style={{ flex: 1 }}>
                   <option value="">Walk-in Customer</option>
-                  {customers.map(c => (
-                    <option key={c.id} value={c.id}>{c.name} {c.mobile ? `(${c.mobile})` : ''}</option>
-                  ))}
+                  {customers.map(c => <option key={c.id} value={c.id}>{c.name} {c.mobile ? `(${c.mobile})` : ''}</option>)}
                 </select>
                 <button className="btn-icon" onClick={() => setIsCustomerModalOpen(true)} title="Add Customer"><i className="fas fa-user-plus"></i></button>
               </div>
@@ -973,26 +858,19 @@ const POS = () => {
               <label className="lbl">Salesperson</label>
               <select className="finp" value={selectedSalesperson} onChange={handleSalespersonChange}>
                 <option value="">Select Salesperson</option>
-                {salespersons.map(sp => (
-                  <option key={sp.id} value={sp.id}>{sp.name}</option>
-                ))}
+                {salespersons.map(sp => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
               </select>
             </div>
             <div>
               <label className="lbl">T&C Template</label>
               <select className="finp" onChange={(e) => {
                 const templates = {
-                  laptop: `Goods once sold cannot be returned or exchanged.\n\nWarranty on Products: 1 Year Warranty.\n\nWarranty T&C - Warranty does not cover physical damage like liquid spill, water spill, burn, high voltage damage, display broken or crack, display line, display patch, speaker damage, keys broken or any other physical damage. Loss of data, software or any other information.\n\nExclusions from Warranty - Consumable parts such as batteries are not covered.\n\nService Warranty - Covers the cost of service/labour. Any parts replaced will be charged at actuals.\n\nDelivery charges may be additional.`,
-                  gaming: `Gaming charges are non-refundable once session starts.\n\nCustomer is responsible for any physical damage to controller, headset, keyboard, mouse, monitor, console or gaming accessories.\n\nFood, drinks and rough handling are not allowed near gaming setup.\n\nSession time will be counted from start time. Extra time will be charged as per store pricing.\n\nEronix Technologies is not responsible for saved game progress or online account issues.`,
-                  accessories: `Goods once sold cannot be returned or exchanged.\n\nWarranty is applicable only if provided by brand/manufacturer.\n\nWarranty does not cover physical damage, burnt, liquid damage, broken cable, broken connector or misuse.\n\nReplacement or service will be as per company warranty policy.\n\nDelivery charges may be additional.`
+                  gaming: `Gaming charges are non-refundable once session starts.`
                 };
-                const val = e.target.value;
-                if (templates[val]) setTerms(templates[val]);
+                if (templates[e.target.value]) setTerms(templates[e.target.value]);
               }}>
                 <option value="">Select Template</option>
-                <option value="laptop">Laptop T&C</option>
                 <option value="gaming">Gaming Zone T&C</option>
-                <option value="accessories">Accessories T&C</option>
               </select>
             </div>
             <div>
@@ -1004,12 +882,9 @@ const POS = () => {
           </div>
         </div>
 
-        {/* Right Panel - Bill Summary */}
         <div className="pos-right">
           <div className="bill-panel">
-            <div className="bill-hdr">
-              <h5><i className="fas fa-receipt"></i> Bill Summary</h5>
-            </div>
+            <div className="bill-hdr"><h5><i className="fas fa-receipt"></i> Bill Summary</h5></div>
             <div className="bill-body">
               <div className="b-row"><span>Items</span><span>{cart.length}</span></div>
               <div className="b-row"><span>Subtotal</span><span>₹{subtotal.toFixed(2)}</span></div>
@@ -1023,25 +898,13 @@ const POS = () => {
               </div>
               <div className="b-row"><span>GST</span><span>₹{taxTotal.toFixed(2)}</span></div>
               <div className="b-row"><span>Round Off</span><span>{roundOff >= 0 ? '+' : ''}₹{roundOff.toFixed(2)}</span></div>
-              <div className="b-row total">
-                <span>Total</span>
-                <span className="val">₹{total.toFixed(2)}</span>
-              </div>
+              <div className="b-row total"><span>Total</span><span className="val">₹{total.toFixed(2)}</span></div>
 
               <div style={{ marginTop: '14px' }}>
                 <label className="lbl">Payment Method</label>
                 <div className="pm-btns">
                   {['cash', 'card', 'upi', 'credit'].map(mode => (
-                    <div
-                      key={mode}
-                      className={`pm-btn ${paymentMode === mode ? 'active' : ''}`}
-                      onClick={() => handlePaymentMode(mode)}
-                    >
-                      {mode === 'cash' && <i className="fas fa-money-bill-wave"></i>}
-                      {mode === 'card' && <i className="fas fa-credit-card"></i>}
-                      {mode === 'upi' && <i className="fas fa-mobile-alt"></i>}
-                      {mode === 'credit' && <i className="fas fa-file-invoice-dollar"></i>}
-                      <br />
+                    <div key={mode} className={`pm-btn ${paymentMode === mode ? 'active' : ''}`} onClick={() => handlePaymentMode(mode)}>
                       {mode.charAt(0).toUpperCase() + mode.slice(1)}
                     </div>
                   ))}
@@ -1049,21 +912,9 @@ const POS = () => {
               </div>
 
               <div className="payment-row">
-                <div>
-                  <label className="lbl">Amount Paid</label>
-                  <input type="number" className="finp" value={paidAmount} min="0" step="0.01" onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <label className="lbl">Balance Due</label>
-                  <div className="finp due">{due > 0 ? `₹${due.toFixed(2)}` : '₹0.00'}</div>
-                </div>
+                <div><label className="lbl">Amount Paid</label><input type="number" className="finp" value={paidAmount} min="0" step="0.01" onChange={(e) => setPaidAmount(parseFloat(e.target.value) || 0)} /></div>
+                <div><label className="lbl">Balance Due</label><div className="finp due">{due > 0 ? `₹${due.toFixed(2)}` : '₹0.00'}</div></div>
               </div>
-
-              {change > 0 && paymentMode === 'cash' && (
-                <div className="change-box">
-                  <i className="fas fa-hand-holding-usd"></i> Change: <strong>₹{change.toFixed(2)}</strong>
-                </div>
-              )}
             </div>
             <div className="bill-foot">
               <button className="btn-hold" onClick={holdBill}><i className="fas fa-pause"></i> Hold Bill (F2)</button>
@@ -1073,7 +924,6 @@ const POS = () => {
         </div>
       </div>
 
-      {/* ======== BOOKING MODAL ======== */}
       {isBookingModalOpen && (
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '800px' }}>
@@ -1083,167 +933,21 @@ const POS = () => {
                 <div className="form-group">
                   <label>Device *</label>
                   <select className="finp" value={bookingData.device} onChange={(e) => handleBookingFieldChange('device', e.target.value)}>
-                    {devices.map(d => (
-                      <option key={d.id} value={d.name}>{d.name}</option>
-                    ))}
-                    {devices.length === 0 && <option>PS5 Station 01</option>}
+                    {devices.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
                   <label>Game *</label>
                   <select className="finp" value={bookingData.game} onChange={(e) => handleBookingFieldChange('game', e.target.value)}>
-                    {games.map(g => (
-                      <option key={g.id} value={g.name}>{g.name}</option>
-                    ))}
-                    {games.length === 0 && <option>Gaming</option>}
+                    {games.map(g => <option key={g.id} value={g.name}>{g.name}</option>)}
                   </select>
                 </div>
               </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Rate *</label>
-                  <select className="finp" value={`${bookingData.rate}|${bookingData.rateLabel}`} onChange={(e) => {
-                    const [rate, label] = e.target.value.split('|');
-                    handleBookingFieldChange('rate', parseFloat(rate));
-                    handleBookingFieldChange('rateLabel', label);
-                  }}>
-                    {rates.map(r => (
-                      <option key={r.id} value={`${r.price}|${r.name}`}>{r.name} - ₹{r.price}/hr</option>
-                    ))}
-                    {rates.length === 0 && (
-                      <>
-                        <option value="100|PS5 1 Player">PS5 1 Player - ₹100/hr</option>
-                        <option value="150|PS5 2 Players">PS5 2 Players - ₹150/hr</option>
-                        <option value="50|PC Gaming">PC Gaming - ₹50/hr</option>
-                      </>
-                    )}
-                  </select>
-                </div>
-                <div className="form-group">
-                  <label>Duration (hours) *</label>
-                  <input type="number" className="finp" min="1" max="12" value={bookingData.duration} onChange={(e) => handleBookingFieldChange('duration', parseInt(e.target.value) || 1)} />
-                </div>
+              <div className="modal-actions">
+                <button className="btn-gray" onClick={() => setIsBookingModalOpen(false)}>Cancel</button>
+                <button className="btn-primary" onClick={startWalkInSession}><i className="fas fa-play"></i> Start Session</button>
+                <button className="btn-primary" onClick={addBookingToCart}><i className="fas fa-cart-plus"></i> Add to Cart</button>
               </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Customer Name</label>
-                  <input type="text" className="finp" value={bookingData.customer} onChange={(e) => handleBookingFieldChange('customer', e.target.value)} />
-                </div>
-                <div style={{ flex: 1 }}></div>
-              </div>
-
-              <div className="form-row" style={{ marginTop: '12px' }}>
-                <div className="calendar-section" style={{ flex: 1 }}>
-                  <div className="calendar-header">
-                    <button onClick={prevBookingMonth}>‹</button>
-                    <h3>{bookingMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}</h3>
-                    <button onClick={nextBookingMonth}>›</button>
-                  </div>
-                  <div className="calendar-weekdays">
-                    {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(day => (
-                      <div key={day} className="weekday">{day}</div>
-                    ))}
-                  </div>
-                  <div className="calendar-days">
-                    {getCalendarDays(bookingMonth).map((date, idx) => (
-                      <div
-                        key={idx}
-                        className={`calendar-day ${date ? '' : 'empty'} ${date && isDateSelected(date) ? 'selected' : ''}`}
-                        onClick={() => date && handleBookingDateSelect(date)}
-                      >
-                        {date ? date.getDate() : ''}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="timeslots-section" style={{ flex: 1, marginLeft: '16px' }}>
-                  <h4>Available Time Slots</h4>
-                  <div className="slot-legend">
-                    <span className="legend-item"><span className="legend-box available"></span> Available</span>
-                    <span className="legend-item"><span className="legend-box booked"></span> Booked</span>
-                    <span className="legend-item"><span className="legend-box selected"></span> Selected</span>
-                  </div>
-                  <div className="slot-grid" style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                    {bookingTimeSlots.map((slot, idx) => (
-                      <button
-                        key={idx}
-                        className={`time-slot ${slot.status} ${bookingData.timeSlot?.time === slot.time ? 'selected' : ''}`}
-                        disabled={slot.status === 'booked'}
-                        onClick={() => handleBookingTimeSlotSelect(slot)}
-                      >
-                        {slot.time}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ marginTop: '16px', background: '#1e293b', padding: '12px', borderRadius: '6px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
-                  <span>Selected Slot:</span>
-                  <span style={{ color: '#f8fafc', fontWeight: '600' }}>
-                    {bookingData.timeSlot ? `${bookingData.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })} ${bookingData.timeSlot.time}` : 'None'}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8', marginTop: '4px' }}>
-                  <span>Total Price:</span>
-                  <span style={{ color: '#f8fafc', fontWeight: '600' }}>₹{(bookingData.rate * bookingData.duration).toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button className="btn-gray" onClick={() => setIsBookingModalOpen(false)}>Cancel</button>
-              <button className="btn-primary" onClick={addBookingToCart}><i className="fas fa-cart-plus"></i> Add to Cart</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Customer Modal */}
-      {isCustomerModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '600px' }}>
-            <h2 className="modal-title"><i className="fas fa-user-plus"></i> Add New Customer</h2>
-            <div className="modal-form">
-              <div className="form-row">
-                <label>Full Name *</label>
-                <input type="text" className="finp" value={newCustomer.full_name} onChange={(e) => setNewCustomer({ ...newCustomer, full_name: e.target.value })} />
-              </div>
-              <div className="form-row">
-                <label>Phone Number</label>
-                <input type="text" className="finp" value={newCustomer.phone_number} onChange={(e) => setNewCustomer({ ...newCustomer, phone_number: e.target.value })} />
-              </div>
-              <div className="form-row">
-                <label>Email</label>
-                <input type="email" className="finp" value={newCustomer.email} onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} />
-              </div>
-              <div className="form-row">
-                <label>Username</label>
-                <input type="text" className="finp" value={newCustomer.username} onChange={(e) => setNewCustomer({ ...newCustomer, username: e.target.value })} placeholder="Optional auto-generate" />
-              </div>
-            </div>
-            <div className="modal-actions">
-              <button className="btn-gray" onClick={() => setIsCustomerModalOpen(false)}>Cancel</button>
-              <button className="btn-primary" onClick={saveNewCustomer}>Save</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Terms Modal */}
-      {isTermsModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '700px' }}>
-            <h2 className="modal-title"><i className="fas fa-file-contract"></i> Terms & Conditions</h2>
-            <div className="modal-form">
-              <textarea className="finp terms-modal-area" rows="14" value={termsContent} onChange={(e) => setTermsContent(e.target.value)}></textarea>
-            </div>
-            <div className="modal-actions">
-              <button className="btn-gray" onClick={() => setIsTermsModalOpen(false)}>Cancel</button>
-              <button className="btn-primary" onClick={() => { setTerms(termsContent); setIsTermsModalOpen(false); }}>Save</button>
             </div>
           </div>
         </div>

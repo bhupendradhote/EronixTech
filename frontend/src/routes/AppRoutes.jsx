@@ -63,6 +63,7 @@ const GameDevices = lazy(() => import("../pages/GameZoneAdmin/GameDevices/GameDe
 const POS = lazy(() => import("../pages/GameZoneAdmin/POS/POS"));
 const Salespersons = lazy(() => import("../pages/GameZoneAdmin/Salespersons/Salespersons")); 
 const SalesHistory = lazy(() => import("../pages/GameZoneAdmin/SalesHistory/SalesHistory"));
+const GameBookingsHistory = lazy(() => import("../pages/GameZoneAdmin/GameBookings/GameBookingsHistory")); // NEW IMPORT
 const Players = lazy(() => import("../pages/GameZoneAdmin/Players/Players"));
 
 // Coming Soon
@@ -263,6 +264,7 @@ function AppRoutes() {
           <Route path="pos" element={<POS />} />
           <Route path="salespersons" element={<Salespersons />} />
           <Route path="sales-history" element={<SalesHistory />} />
+          <Route path="game-bookings" element={<GameBookingsHistory />} /> {/* NEW ROUTE */}
           <Route path="players" element={<Players />} />
         </Route>
 
