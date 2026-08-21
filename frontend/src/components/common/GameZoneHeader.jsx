@@ -23,9 +23,17 @@ const GameZoneHeader = () => {
     username: '', email: '', full_name: '', phone_number: '', password: '', confirmPassword: ''
   });
 
+  // --- NON-BLOCKING BACKGROUND PROFILE FETCH ---
   useEffect(() => {
     const token = localStorage.getItem('gameToken');
-    if (token) fetchUserProfile();
+    if (token) {
+      gameAuthService.getProfile()
+        .then((data) => setUser(data))
+        .catch(() => {
+          gameAuthService.logout();
+          setUser(null);
+        });
+    }
   }, []);
 
   const fetchUserProfile = async () => {
@@ -101,7 +109,6 @@ const GameZoneHeader = () => {
     }
   };
 
-  // ✅ FIX: use `id_token: true` to get an ID token (JWT)
   const googleLogin = useGoogleLogin({
     id_token: true,
     onSuccess: async (tokenResponse) => {
@@ -248,7 +255,7 @@ const GameZoneHeader = () => {
                   <label htmlFor="register-fullname"><FiUser /> Full Name</label>
                   <input type="text" id="register-fullname" name="full_name" placeholder="Enter your full name" value={registerData.full_name} onChange={handleRegisterChange} required disabled={loading} />
                 </div>
-                <div className="form-group">
+                <div className="app-form-group form-group">
                   <label htmlFor="register-phone"><FiUser /> Phone Number (optional)</label>
                   <input type="tel" id="register-phone" name="phone_number" placeholder="Enter phone number" value={registerData.phone_number} onChange={handleRegisterChange} disabled={loading} />
                 </div>

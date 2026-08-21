@@ -14,7 +14,9 @@
   flex-wrap: wrap;
   gap: 16px;
 }
-
+option{
+  color: black;
+}
 .game-admin-header h2 {
   font-size: 24px;
   font-weight: 700;

@@ -20,7 +20,6 @@ const GameBookingsHistory = () => {
     const [paymentAmount, setPaymentAmount] = useState('');
     const [paymentMode, setPaymentMode] = useState('cash');
 
-    // TV / Big Screen View Modal State
     const [showTvModal, setShowTvModal] = useState(false);
     const [tvSession, setTvSession] = useState(null);
     const [timeLeft, setTimeLeft] = useState(0);
@@ -39,30 +38,44 @@ const GameBookingsHistory = () => {
             setPagination(data.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 });
             setError(null);
 
-            // Sync active "playing" booking sessions to TV Display Service
+            // Retain any actual start time (playedAt) from current memory
+            const existingSessions = tvSyncService.getSessions();
+            const existingPosSessions = existingSessions.filter(s => s.type !== 'booking');
+
             const activePlaying = bookingsList
                 .filter(b => b.status === 'playing')
                 .map(b => {
-                    const startTimeMs = new Date(b.start_time).getTime();
-                    const durationMs = (b.duration_minutes || 60) * 60000;
-                    const endTimeMs = startTimeMs + durationMs;
-                    
+                    const existingSession = existingSessions.find(s => s.id === 'booking_' + b.id);
+                    const playedAtMs = existingSession ? existingSession.playedAt : null;
+
+                    let startMs = Date.now();
+                    if (b.start_time) {
+                        const startStr = b.start_time.replace(' ', 'T');
+                        const parsed = Date.parse(startStr);
+                        if (!isNaN(parsed)) startMs = parsed;
+                    }
+
+                    const durationMins = Number(b.duration_minutes) || 60;
+                    const effectiveStartMs = playedAtMs || startMs;
+                    const endTimeMs = effectiveStartMs + (durationMins * 60000);
+
                     return {
                         id: 'booking_' + b.id,
                         type: 'booking',
                         device: b.device_name || `Station #${b.device_id}`,
                         customer: b.customer_name || 'Gamer',
                         game: b.game_name || 'Gaming Session',
-                        label: `Booking #${b.id} (${b.duration_minutes || 60}m)`,
-                        startedAt: startTimeMs,
+                        label: `Booking #${b.id} (${durationMins}m)`,
+                        startedAt: startMs,
                         endTime: endTimeMs,
+                        duration_minutes: durationMins,
                         amountVal: b.total_price || 0,
-                        statusText: 'Playing (Booking)'
+                        statusText: 'Playing (Booking)',
+                        status: b.status,
+                        playedAt: playedAtMs // Re-inject memory back in
                     };
                 });
 
-            // Merge with any existing POS sessions so both are visible on TV View
-            const existingPosSessions = tvSyncService.getSessions().filter(s => s.type !== 'booking');
             tvSyncService.updateSessions([...existingPosSessions, ...activePlaying]);
 
         } catch (err) {
@@ -89,16 +102,27 @@ const GameBookingsHistory = () => {
         fetchStats();
     }, []);
 
-    // Fixed TV Modal Countdown Timer Effect
+    // ----- TV Modal Timer (final robust fix) -----
     useEffect(() => {
         let timer;
         if (showTvModal && tvSession) {
             const calculateTimeLeft = () => {
-                const startTimeMs = new Date(tvSession.start_time).getTime();
-                const durationMs = (tvSession.duration_minutes || 60) * 60000;
-                const endTime = startTimeMs + durationMs;
-                const now = new Date().getTime();
-                const diff = Math.floor((endTime - now) / 1000);
+                const durationMins = Number(tvSession.duration_minutes) || 0;
+                if (!durationMins) return 0;
+
+                // Priority: exact click time > DB start time > current time
+                let startMs = tvSession.playedAt || tvSession.startedAt;
+                if (!startMs && tvSession.start_time) {
+                    const parsed = Date.parse(tvSession.start_time.replace(' ', 'T'));
+                    if (!isNaN(parsed)) startMs = parsed;
+                }
+                if (!startMs) {
+                    startMs = Date.now();
+                }
+
+                const endMs = startMs + (durationMins * 60000);
+                const now = Date.now();
+                const diff = Math.floor((endMs - now) / 1000);
                 return diff > 0 ? diff : 0;
             };
 
@@ -110,6 +134,7 @@ const GameBookingsHistory = () => {
         return () => clearInterval(timer);
     }, [showTvModal, tvSession]);
 
+    // --- handlers ---
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
         setFilters(prev => ({ ...prev, [name]: value }));
@@ -130,8 +155,8 @@ const GameBookingsHistory = () => {
 
     const formatDateTime = (dateString) => {
         if (!dateString) return '-';
-        const d = new Date(dateString);
-        return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) + ' ' +
+        const d = new Date(dateString.replace(' ', 'T'));
+        return isNaN(d) ? dateString : d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) + ' ' +
                d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
     };
 
@@ -154,19 +179,64 @@ const GameBookingsHistory = () => {
     const changeStatus = async (id, newStatus) => {
         if (!window.confirm(`Mark this booking as ${newStatus.toUpperCase()}?`)) return;
         try {
+            // Instant TV Session Creation (Start timer exactly when clicked)
+            if (newStatus === 'playing') {
+                const b = bookings.find(x => x.id === id);
+                if (b) {
+                    const existingSessions = tvSyncService.getSessions();
+                    const sessionId = 'booking_' + id;
+                    const session = {
+                        id: sessionId,
+                        type: 'booking',
+                        device: b.device_name || `Station #${b.device_id}`,
+                        customer: b.customer_name || 'Gamer',
+                        game: b.game_name || 'Gaming Session',
+                        label: `Booking #${b.id} (${b.duration_minutes}m)`,
+                        duration_minutes: b.duration_minutes,
+                        amountVal: b.total_price || 0,
+                        statusText: 'Playing (Booking)',
+                        status: 'playing',
+                        playedAt: Date.now() // The Magic Fix: Locks timer to EXACT moment
+                    };
+                    
+                    tvSyncService.updateSessions([
+                        ...existingSessions.filter(s => s.id !== sessionId),
+                        session
+                    ]);
+                }
+            }
+
             const res = await gameBookingService.updateStatus(id, newStatus);
-            fetchBookings(pagination.page);
+            await fetchBookings(pagination.page);
             fetchStats();
+            
             if (newStatus === 'playing' && res.booking) {
-                openTvView(res.booking);
+                openTvView(res.booking, true);
             }
         } catch (err) {
             alert('Error updating status: ' + (err.message || err));
         }
     };
 
-    const openTvView = (booking) => {
-        setTvSession(booking);
+    const openTvView = (booking, justStarted = false) => {
+        let sessionData = booking;
+        if (!sessionData.start_time || !sessionData.duration_minutes) {
+            const found = bookings.find(b => b.id === booking.id);
+            if (found) sessionData = found;
+        }
+
+        const existingSessions = tvSyncService.getSessions();
+        const existingSession = existingSessions.find(s => s.id === 'booking_' + booking.id);
+
+        if (sessionData.status === 'playing') {
+            if (justStarted) {
+                sessionData = { ...sessionData, playedAt: Date.now() };
+            } else if (existingSession && existingSession.playedAt) {
+                sessionData = { ...sessionData, playedAt: existingSession.playedAt };
+            }
+        }
+        
+        setTvSession(sessionData);
         setShowTvModal(true);
     };
 
@@ -215,7 +285,6 @@ const GameBookingsHistory = () => {
                 </div>
             </div>
 
-            {/* Stats Cards */}
             {stats && (
                 <div className="stats-grid">
                     <div className="stat-card">
@@ -249,7 +318,6 @@ const GameBookingsHistory = () => {
                 </div>
             )}
 
-            {/* Filters */}
             {showFilters && (
                 <div className="filters-panel">
                     <div className="filters-row">
@@ -295,7 +363,6 @@ const GameBookingsHistory = () => {
                 </div>
             )}
 
-            {/* Table */}
             <div className="table-wrapper">
                 <table className="table">
                     <thead>
@@ -362,7 +429,6 @@ const GameBookingsHistory = () => {
                 </table>
             </div>
 
-            {/* Pagination */}
             {pagination.totalPages > 1 && (
                 <div className="pagination">
                     <button className="pagination-btn" onClick={() => handlePageChange(pagination.page - 1)} disabled={pagination.page <= 1}>
@@ -375,7 +441,6 @@ const GameBookingsHistory = () => {
                 </div>
             )}
 
-            {/* Payment Modal */}
             {showPaymentModal && selectedBooking && (
                 <div className="modal-overlay">
                     <div className="modal-content" style={{ maxWidth: '420px' }}>
@@ -413,7 +478,6 @@ const GameBookingsHistory = () => {
                 </div>
             )}
 
-            {/* TV Big Screen Timer Modal */}
             {showTvModal && tvSession && (
                 <div className="modal-overlay" style={{ background: 'rgba(0,0,0,0.95)' }}>
                     <div style={{ textAlign: 'center', color: '#fff', width: '100%', maxWidth: '800px', padding: '40px' }}>

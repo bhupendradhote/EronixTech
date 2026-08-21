@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+// src/pages/GameZone/Home/GamingZone.jsx
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import {
   FiHome, FiCalendar, FiGift, FiAward, FiMapPin, FiClock, FiUsers,
   FiMonitor, FiShoppingCart, FiBell, FiUser, FiPhone, FiMail,
@@ -6,7 +7,7 @@ import {
   FiStar, FiShield, FiZap, FiHeadphones, FiHeart, FiMessageCircle, FiLock,
   FiArrowRight, FiExternalLink, FiPlus, FiMinus
 } from 'react-icons/fi';
-import { FaWhatsapp, FaGooglePay, FaGamepad, FaTrophy, FaFire } from 'react-icons/fa'; 
+import { FaWhatsapp, FaGooglePay, FaGamepad, FaTrophy, FaFire } from 'react-icons/fa';
 
 import GameZoneLayout from '../../../components/layout/GameZoneLayout';
 import '../../GameZone/GamingZone.css';
@@ -17,39 +18,23 @@ import gameDeviceService from '../../../services/gameDeviceService';
 import posService from '../../../services/posService';
 import paymentService from '../../../services/paymentService';
 
+// Promotional banners
 const promotionalBanners = [
   { id: 1, title: 'Night Owl Pass', desc: 'Play from 10 PM to 6 AM for just ₹500', icon: <FiClock />, tag: 'HOT DEAL' },
   { id: 2, title: 'Weekend Tournament', desc: 'Join the EA FC Cup & win ₹10,000', icon: <FaTrophy />, tag: 'ESPORTS' },
   { id: 3, title: 'Squad Offer', desc: 'Book 4 PCs, get 1 hour absolutely free', icon: <FiUsers />, tag: 'CO-OP' }
 ];
 
-const gameGallery = [
-  { id: 1, title: 'Cyberpunk 2077', category: 'RPG', image: 'https://images.unsplash.com/photo-1605901309584-818e25960b8f?w=800&h=800&fit=crop', link: '#cyberpunk', size: 'large' },
-  { id: 2, title: 'Elden Ring', category: 'Action RPG', image: 'https://images.unsplash.com/photo-1588824177218-3dd022b7201c?w=400&h=800&fit=crop', link: '#eldenring', size: 'tall' },
-  { id: 3, title: 'Apex Legends', category: 'Battle Royale', image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&h=400&fit=crop', link: '#apex', size: 'wide' },
-  { id: 4, title: 'Forza Horizon 5', category: 'Racing', image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=400&h=400&fit=crop', link: '#forza', size: 'small' },
-  { id: 5, title: 'Red Dead Redemption 2', category: 'Open World', image: 'https://images.unsplash.com/photo-1493711662285-585847dc6ce4?w=400&h=400&fit=crop', link: '#rdr2', size: 'small' },
-  { id: 6, title: 'God of War', category: 'Action', image: 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=800&h=400&fit=crop', link: '#gow', size: 'wide' },
+const generateTimeSlots = () => [
+  { time: '10:00 AM', status: 'available' }, { time: '10:30 AM', status: 'available' },
+  { time: '11:00 AM', status: 'available' }, { time: '11:30 AM', status: 'available' },
+  { time: '12:00 PM', status: 'available' }, { time: '12:30 PM', status: 'available' },
+  { time: '01:00 PM', status: 'available' }, { time: '01:30 PM', status: 'available' },
+  { time: '02:00 PM', status: 'available' }, { time: '02:30 PM', status: 'available' },
+  { time: '03:00 PM', status: 'available' }, { time: '03:30 PM', status: 'available' },
+  { time: '04:00 PM', status: 'available' }, { time: '04:30 PM', status: 'available' },
+  { time: '05:00 PM', status: 'available' },
 ];
-
-const environmentShowcase = [
-  { id: 1, title: 'Pro PC Arena', desc: 'RTX 4090, 240Hz Monitors, Secretlab Chairs', image: 'https://images.unsplash.com/photo-1598550476439-6847785fcea6?w=600&h=400&fit=crop' },
-  { id: 2, title: 'PS5 VIP Lounge', desc: '75" 4K OLED TVs, Couch Co-op Comfort', image: 'https://images.unsplash.com/photo-1606144042871-29c7458ecb05?w=600&h=400&fit=crop' },
-  { id: 3, title: 'Racing Simulator', desc: 'Logitech G923 Setup with VR Support', image: 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=600&h=400&fit=crop' },
-];
-
-const generateTimeSlots = () => {
-  return [
-    { time: '10:00 AM', status: 'available' }, { time: '10:30 AM', status: 'available' },
-    { time: '11:00 AM', status: 'available' }, { time: '11:30 AM', status: 'available' },
-    { time: '12:00 PM', status: 'available' }, { time: '12:30 PM', status: 'available' },
-    { time: '01:00 PM', status: 'available' }, { time: '01:30 PM', status: 'available' },
-    { time: '02:00 PM', status: 'available' }, { time: '02:30 PM', status: 'available' },
-    { time: '03:00 PM', status: 'available' }, { time: '03:30 PM', status: 'available' },
-    { time: '04:00 PM', status: 'available' }, { time: '04:30 PM', status: 'available' },
-    { time: '05:00 PM', status: 'available' },
-  ];
-};
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -65,125 +50,307 @@ const loadRazorpayScript = () => {
   });
 };
 
+// ─── Booking Summary Component (placed inside each step card) ───
+const BookingSummary = ({ selectedPlatform, selectedDuration, selectedDate, selectedTimeSlot, selectedDevice, cartAddons, calculateTotal, calculateGamingTotal, calculateAddonsTotal, selectedRate }) => {
+  if (!selectedRate) return null;
+
+  return (
+    <div className="booking-summary-panel">
+      <div className="summary-header">
+        <FiClock className="summary-icon" />
+        <span>Current Booking</span>
+      </div>
+      <div className="summary-body">
+        <div className="summary-item">
+          <span>Platform</span>
+          <strong>{selectedPlatform.toUpperCase()}</strong>
+        </div>
+        <div className="summary-item">
+          <span>Duration</span>
+          <strong>{selectedDuration} Hr{selectedDuration > 1 ? 's' : ''}</strong>
+        </div>
+        {selectedDate && (
+          <div className="summary-item">
+            <span>Date</span>
+            <strong>{selectedDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+          </div>
+        )}
+        {selectedTimeSlot && (
+          <div className="summary-item">
+            <span>Time</span>
+            <strong>{selectedTimeSlot.time}</strong>
+          </div>
+        )}
+        {selectedDevice && (
+          <div className="summary-item">
+            <span>Station</span>
+            <strong>{selectedDevice.name}</strong>
+          </div>
+        )}
+        {cartAddons.length > 0 && (
+          <div className="summary-item">
+            <span>Add-ons</span>
+            <strong>{cartAddons.reduce((acc, a) => acc + a.qty, 0)} Items</strong>
+          </div>
+        )}
+        <div className="summary-divider"></div>
+        <div className="summary-item">
+          <span>Gaming</span>
+          <strong>₹{calculateGamingTotal().toFixed(2)}</strong>
+        </div>
+        {cartAddons.length > 0 && (
+          <div className="summary-item">
+            <span>F&B</span>
+            <strong>₹{calculateAddonsTotal().toFixed(2)}</strong>
+          </div>
+        )}
+        <div className="summary-divider"></div>
+        <div className="summary-item total">
+          <span>Total</span>
+          <strong>₹{calculateTotal().toFixed(2)}</strong>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const GamingZone = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedPlatform, setSelectedPlatform] = useState('ps5');
-  
+  const [dataLoading, setDataLoading] = useState(true);
+  const [authError, setAuthError] = useState(null);
+
   const [rates, setRates] = useState([]);
   const [games, setGames] = useState([]);
   const [devices, setDevices] = useState([]);
   const [quickButtons, setQuickButtons] = useState([]);
   const [salespersons, setSalespersons] = useState([]);
-  
+
   const [selectedRate, setSelectedRate] = useState(null);
   const [selectedDuration, setSelectedDuration] = useState(1);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTimeSlot, setSelectedTimeSlot] = useState(null);
-  
-  const [playerDetails, setPlayerDetails] = useState({ 
-    fullName: '', 
-    mobileNumber: '', 
-    numberOfPlayers: 1, 
+  const [selectedDevice, setSelectedDevice] = useState(null);
+
+  const [playerDetails, setPlayerDetails] = useState({
+    fullName: '',
+    mobileNumber: '',
+    numberOfPlayers: 1,
     selectedGame: null,
     preferredDevice: '',
     salespersonId: ''
   });
-  
-  const [cartAddons, setCartAddons] = useState([]); 
-  const [paymentMethod, setPaymentMethod] = useState('online'); 
+
+  const [cartAddons, setCartAddons] = useState([]);
+  const [paymentMethod, setPaymentMethod] = useState('online');
   const [bookingConfirmed, setBookingConfirmed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [availableTimeSlots, setAvailableTimeSlots] = useState(generateTimeSlots());
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotError, setSlotError] = useState('');
 
-  useEffect(() => {
-    const fetchDynamicData = async () => {
-      try {
-        const [ratesRes, gamesRes, devicesRes, buttonsRes, salespersonsRes] = await Promise.all([
-          gameRateService.getActiveRates(),
-          gameService.getActiveGames(),
-          gameDeviceService.getActiveDevices(),
-          posService.getQuickButtons(),
-          posService.getSalespersons()
-        ]);
-        setRates(ratesRes.rates || []);
-        setGames(gamesRes.games || []);
-        setDevices(devicesRes.devices || []);
-        setQuickButtons(buttonsRes.buttons || []);
-        setSalespersons(salespersonsRes.salespersons || []);
-      } catch (error) {
-        console.error('Error fetching dynamic data:', error);
+  // --- Optimized Instant Loader ---
+  const fetchDynamicData = useCallback(async () => {
+    try {
+      const [ratesRes, gamesRes, devicesRes, buttonsRes, salespersonsRes] = await Promise.all([
+        gameRateService.getActiveRates().catch(() => ({ rates: [] })),
+        gameService.getActiveGames().catch(() => ({ games: [] })),
+        gameDeviceService.getActiveDevices().catch(() => []),
+        posService.getQuickButtons().catch(() => ({ buttons: [] })),
+        posService.getSalespersons().catch(() => ({ salespersons: [] }))
+      ]);
+
+      setRates(ratesRes.rates || ratesRes || []);
+      setGames(gamesRes.games || gamesRes || []);
+      setDevices(devicesRes.devices || devicesRes || []);
+      setQuickButtons(buttonsRes.buttons || buttonsRes || []);
+      setSalespersons(salespersonsRes.salespersons || salespersonsRes || []);
+    } catch (error) {
+      console.error('Error fetching dynamic data:', error);
+      if (error.response?.status === 401) {
+        setAuthError('Please log in for complete features, but you can still browse.');
       }
-    };
-    fetchDynamicData();
+    } finally {
+      setDataLoading(false);
+    }
   }, []);
-  
+
+  useEffect(() => {
+    fetchDynamicData();
+
+    const handleLoginSuccess = () => {
+      setAuthError(null);
+      fetchDynamicData();
+    };
+
+    window.addEventListener('game-login-success', handleLoginSuccess);
+    return () => {
+      window.removeEventListener('game-login-success', handleLoginSuccess);
+    };
+  }, [fetchDynamicData]);
+
+  // --- Availability polling ---
   useEffect(() => {
     if (!selectedDate || !selectedRate) return;
     let cancelled = false;
-    
+
     const loadAvailability = async () => {
-      setSlotsLoading(true); 
+      setSlotsLoading(true);
       setSlotError('');
-      
+
       try {
-        const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth()+1).padStart(2,'0')}-${String(selectedDate.getDate()).padStart(2,'0')}`;
-        const platform = selectedPlatform === 'pc' ? 'PC' : 'PS5';
+        const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
+        const platform = 'all';
         const durationMinutes = Math.round(selectedDuration * 60);
-        
+
         const data = await gameBookingService.getAvailability({ date: dateStr, platform, durationMinutes });
         if (cancelled) return;
-        
+
         setAvailableTimeSlots((data.slots || []).map(slot => ({
           ...slot,
           time: new Date(slot.start_time.replace(' ', 'T')).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
           status: slot.available ? 'available' : 'booked',
           availableCount: slot.available_count,
+          available_device_ids: slot.available_device_ids || []
         })));
       } catch (e) {
-        if (!cancelled) { 
-          setSlotError('Live availability could not be loaded.'); 
-          setAvailableTimeSlots([]); 
+        if (!cancelled) {
+          setSlotError('Live availability could not be loaded.');
+          setAvailableTimeSlots([]);
         }
-      } finally { 
-        if (!cancelled) setSlotsLoading(false); 
+      } finally {
+        if (!cancelled) setSlotsLoading(false);
       }
     };
-    
+
     loadAvailability();
     return () => { cancelled = true; };
-  }, [selectedDate, selectedRate, selectedPlatform, selectedDuration]);
+  }, [selectedDate, selectedRate, selectedDuration]);
 
+  // --- Helpers ---
   const calculateGamingTotal = () => selectedRate ? (selectedRate.price * selectedDuration) : 0;
   const calculateAddonsTotal = () => cartAddons.reduce((acc, item) => acc + (item.price * item.qty), 0);
   const calculateTotal = () => calculateGamingTotal() + calculateAddonsTotal();
 
-  const handlePlatformSelect = (platform) => { 
-    setSelectedPlatform(platform); 
-    setSelectedRate(null); 
-    setPlayerDetails(prev => ({ ...prev, preferredDevice: '' }));
-    nextStep(); 
-  };
-  
-  const handleRateSelect = (rate) => setSelectedRate(rate); 
-  const handleDateSelect = (date) => { setSelectedDate(date); setSelectedTimeSlot(null); };
-  const handleTimeSlotSelect = (slot) => { if (slot.status !== 'booked') setSelectedTimeSlot(slot); };
+  // --- Dynamically build platform options from devices ---
+  const platformOptions = useMemo(() => {
+    const platformMap = new Map();
+    devices.forEach(device => {
+      const plat = (device.platform || 'unknown').toLowerCase();
+      if (plat === 'pc' || plat === 'ps5' || plat.includes('playstation')) {
+        const key = plat.includes('ps5') ? 'ps5' : 'pc';
+        if (!platformMap.has(key)) {
+          platformMap.set(key, { key, label: key.toUpperCase(), count: 0 });
+        }
+        platformMap.get(key).count += 1;
+      }
+    });
+    if (!platformMap.has('ps5')) platformMap.set('ps5', { key: 'ps5', label: 'PS5', count: 1 });
+    if (!platformMap.has('pc')) platformMap.set('pc', { key: 'pc', label: 'PC', count: 1 });
+    return Array.from(platformMap.values());
+  }, [devices]);
 
-  const handlePlayerDetailChange = (e) => { 
-    const { name, value } = e.target; 
-    setPlayerDetails(prev => ({ ...prev, [name]: value })); 
+  // --- Filter games based on selected device or platform ---
+  const getFilteredGames = () => {
+    if (selectedPlatform === 'tournament') {
+      return games;
+    }
+
+    let filterPlatform = null;
+    if (selectedDevice) {
+      filterPlatform = selectedDevice.platform || selectedDevice.name;
+    } else {
+      const platformKey = selectedPlatform;
+      const platformNames = [];
+      devices.forEach(d => {
+        const devicePlatform = d.platform || d.name;
+        const devicePlatformLower = devicePlatform.toLowerCase();
+        if (platformKey === 'ps5' && (devicePlatformLower.includes('ps5') || devicePlatformLower.includes('playstation'))) {
+          platformNames.push(devicePlatform);
+        } else if (platformKey === 'pc' && (devicePlatformLower.includes('pc') || devicePlatformLower.includes('computer') || devicePlatformLower.includes('desktop'))) {
+          platformNames.push(devicePlatform);
+        }
+      });
+      if (platformNames.length === 0) return games.filter(g => g.platform && g.platform.toLowerCase() === 'all');
+      return games.filter(game => {
+        if (game.platform && game.platform.toLowerCase() === 'all') return true;
+        return platformNames.some(p => p.toLowerCase() === (game.platform || '').toLowerCase());
+      });
+    }
+
+    return games.filter(game => {
+      if (game.platform && game.platform.toLowerCase() === 'all') return true;
+      return (game.platform || '').toLowerCase() === filterPlatform.toLowerCase();
+    });
   };
-  
+
+  const filteredGames = getFilteredGames();
+
+  // --- Compute available devices for the selected time slot ---
+  const availableDevicesForSlot = useMemo(() => {
+    if (selectedTimeSlot && selectedTimeSlot.available_device_ids) {
+      return devices.filter(d => selectedTimeSlot.available_device_ids.includes(d.id));
+    }
+    return devices;
+  }, [selectedTimeSlot, devices]);
+
+  // --- Compute filtered time slots based on selected device ---
+  const filteredTimeSlots = useMemo(() => {
+    if (!selectedDevice) {
+      return availableTimeSlots;
+    }
+    return availableTimeSlots.map(slot => {
+      const isDeviceFree = slot.available_device_ids?.includes(selectedDevice.id) || false;
+      return {
+        ...slot,
+        status: isDeviceFree ? 'available' : 'booked',
+        availableCount: isDeviceFree ? 1 : 0,
+      };
+    });
+  }, [availableTimeSlots, selectedDevice]);
+
+  // --- Handlers ---
+  const handlePlatformSelect = (platform) => {
+    setSelectedPlatform(platform);
+    setSelectedRate(null);
+    setSelectedDevice(null);
+    setSelectedTimeSlot(null);
+    setPlayerDetails(prev => ({ ...prev, preferredDevice: '', selectedGame: null }));
+    nextStep();
+  };
+
+  const handleRateSelect = (rate) => setSelectedRate(rate);
+  const handleDateSelect = (date) => { setSelectedDate(date); setSelectedTimeSlot(null); };
+
+  const handleTimeSlotSelect = (slot) => {
+    if (slot.status === 'booked') return;
+    setSelectedTimeSlot(slot);
+    if (selectedDevice && !slot.available_device_ids.includes(selectedDevice.id)) {
+      setSelectedDevice(null);
+    }
+  };
+
+  const handleDeviceSelect = (deviceId) => {
+    const device = devices.find(d => d.id === Number(deviceId));
+    setSelectedDevice(device || null);
+    setSelectedTimeSlot(null);
+    setPlayerDetails(prev => ({ ...prev, selectedGame: null }));
+  };
+
+  const handlePlayerDetailChange = (e) => {
+    const { name, value } = e.target;
+    setPlayerDetails(prev => ({ ...prev, [name]: value }));
+  };
+
   const handlePlayersCountChange = (e) => {
     const count = parseInt(e.target.value) || 1;
     setPlayerDetails(prev => ({ ...prev, numberOfPlayers: count }));
   };
 
-  const handleGameSelect = (game) => setPlayerDetails(prev => ({ ...prev, selectedGame: game })); 
-  
+  const handleGameSelect = (game) => setPlayerDetails(prev => ({ ...prev, selectedGame: game }));
+
   const handleAddAddon = (button) => {
     setCartAddons(prev => {
       const existing = prev.find(item => item.id === button.id);
@@ -206,26 +373,35 @@ const GamingZone = () => {
 
   const nextStep = () => { if (currentStep < 6) setCurrentStep(currentStep + 1); };
   const prevStep = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
-  
+
   const confirmBooking = async () => {
     if (!playerDetails.fullName || !playerDetails.mobileNumber || !selectedRate || !selectedTimeSlot || !playerDetails.selectedGame) {
-      alert('Please fill all required fields'); 
+      alert('Please fill all required fields');
       return;
     }
-    
+
+    const token = localStorage.getItem('gameToken');
+    if (!token) {
+      window.dispatchEvent(new Event('open-game-login'));
+      return;
+    }
+
     try {
       setIsProcessing(true);
       const startTime = selectedTimeSlot.start_time ? selectedTimeSlot.start_time.replace(' ', 'T') + '+05:30' : null;
       const salesperson = salespersons.find(sp => sp.id.toString() === playerDetails.salespersonId.toString());
 
       const totalAmount = calculateTotal();
+      const finalDeviceId = selectedDevice ? selectedDevice.id : (playerDetails.preferredDevice || null);
+
+      const platformForBooking = 'all';
 
       if (paymentMethod === 'cash') {
         const payload = {
-          platform: selectedPlatform === 'pc' ? 'PC' : 'PS5',
+          platform: platformForBooking,
           game_id: playerDetails.selectedGame.id,
           rate_id: selectedRate.id,
-          preferred_device_id: playerDetails.preferredDevice || null,
+          preferred_device_id: finalDeviceId,
           salesperson_id: playerDetails.salespersonId || null,
           salesperson_name: salesperson ? salesperson.name : null,
           customer_name: playerDetails.fullName,
@@ -242,8 +418,8 @@ const GamingZone = () => {
         await gameBookingService.createOnlineBooking(payload);
         setBookingConfirmed(true);
         alert('Booking confirmed! Please pay at the counter upon arrival.');
-        window.location.reload(); 
-        
+        window.location.reload();
+
       } else if (paymentMethod === 'online') {
         const isLoaded = await loadRazorpayScript();
         if (!isLoaded) {
@@ -258,10 +434,10 @@ const GamingZone = () => {
         }
 
         const payload = {
-          platform: selectedPlatform === 'pc' ? 'PC' : 'PS5',
+          platform: platformForBooking,
           game_id: playerDetails.selectedGame.id,
           rate_id: selectedRate.id,
-          preferred_device_id: playerDetails.preferredDevice || null,
+          preferred_device_id: finalDeviceId,
           salesperson_id: playerDetails.salespersonId || null,
           salesperson_name: salesperson ? salesperson.name : null,
           customer_name: playerDetails.fullName,
@@ -279,7 +455,7 @@ const GamingZone = () => {
         const internalBookingId = bookingRes.booking.id;
 
         const options = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID || import.meta.env.REACT_APP_RAZORPAY_KEY_ID, 
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID || import.meta.env.REACT_APP_RAZORPAY_KEY_ID,
           amount: order.amount,
           currency: order.currency,
           name: 'EronixTech Gaming Zone',
@@ -293,7 +469,7 @@ const GamingZone = () => {
                 razorpay_signature: response.razorpay_signature,
                 internal_order_id: internalBookingId
               });
-              
+
               setBookingConfirmed(true);
               alert('Payment verified! Your gaming station is successfully reserved.');
               window.location.reload();
@@ -308,7 +484,7 @@ const GamingZone = () => {
           },
           theme: { color: '#3b82f6' },
           modal: {
-            ondismiss: function() {
+            ondismiss: function () {
               setIsProcessing(false);
               alert('Payment window was closed. Your booking is recorded as pending payment.');
             }
@@ -325,53 +501,91 @@ const GamingZone = () => {
     } catch (e) {
       setIsProcessing(false);
       console.error('Booking Error:', e.response?.data || e.message);
-      if (e.response?.status === 409) alert('This slot was just taken. Please choose another time.');
-      else if (e.response?.status === 401) alert('Please login before confirming your booking.');
-      else alert(e.response?.data?.message || e.message || 'Unable to confirm booking.');
+      if (e.response?.status === 401) {
+        window.dispatchEvent(new Event('open-game-login'));
+      } else if (e.response?.status === 409) {
+        alert('This slot was just taken. Please choose another time.');
+      } else {
+        alert(e.response?.data?.message || e.message || 'Unable to confirm booking.');
+      }
     }
   };
 
-  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1)); 
-  const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1)); 
-  
+  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+  const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+
   const getCalendarDays = () => {
-    const year = currentMonth.getFullYear(); 
+    const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
-    const firstDay = new Date(year, month, 1); 
+    const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate(); 
-    const startingDayOfWeek = firstDay.getDay(); 
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
     const days = [];
-    
     for (let i = 0; i < startingDayOfWeek; i++) { days.push(null); }
     for (let i = 1; i <= daysInMonth; i++) { days.push(new Date(year, month, i)); }
     return days;
   };
-  
-  const isDateSelected = (date) => date && selectedDate && date.toDateString() === selectedDate.toDateString(); 
-  const formatDate = (date) => date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); 
+
+  const isDateSelected = (date) => date && selectedDate && date.toDateString() === selectedDate.toDateString();
+  const formatDate = (date) => date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
   const handleImageError = (e) => { e.target.onerror = null; e.target.src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&h=800&fit=crop'; };
 
-  const filteredRates = rates.filter(r => 
-    selectedPlatform === 'ps5' ? r.name.toLowerCase().includes('ps5') : 
-    selectedPlatform === 'pc' ? r.name.toLowerCase().includes('pc') : true
-  );
+  const environmentShowcase = useMemo(() => devices.slice(0, 3).map((device, index) => ({
+    id: index + 1,
+    title: device.name,
+    desc: device.description || `${device.platform || 'Gaming'} station ready for you`,
+    image: device.image_url || 'https://images.unsplash.com/photo-1598550476439-6847785fcea6?w=600&h=400&fit=crop'
+  })), [devices]);
 
-  const availablePlatformDevices = devices.filter(d => d.name.toLowerCase().includes(selectedPlatform));
-  const addonButtons = quickButtons.filter(b => b.type !== 'gaming');
+  const gameGallery = useMemo(() => games.slice(0, 6).map((game, index) => ({
+    id: game.id,
+    title: game.name,
+    category: game.genre || 'Game',
+    image: game.image_url || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&h=800&fit=crop',
+    link: `#${game.name.toLowerCase().replace(/\s/g, '')}`,
+    size: ['large', 'tall', 'wide', 'small', 'small', 'wide'][index % 6]
+  })), [games]);
+
+  const filteredRates = useMemo(() => rates.filter(r =>
+    selectedPlatform === 'ps5' ? r.name.toLowerCase().includes('ps5') :
+      selectedPlatform === 'pc' ? r.name.toLowerCase().includes('pc') : true
+  ), [rates, selectedPlatform]);
+
+  const addonButtons = useMemo(() => quickButtons.filter(b => b.type !== 'gaming'), [quickButtons]);
+
+  // Non-blocking skeleton display if dataLoading takes an instant extra tick
+  if (dataLoading && rates.length === 0 && games.length === 0) {
+    return (
+      <GameZoneLayout>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '60vh' }}>
+          <div className="loader" style={{ color: '#fff', fontSize: '1.2rem' }}>Loading Gaming Arena...</div>
+        </div>
+      </GameZoneLayout>
+    );
+  }
 
   return (
     <GameZoneLayout>
       <div className="gaming-zone-page">
+        {authError && (
+          <div style={{ background: '#1e293b', color: '#facc15', padding: '10px 20px', textAlign: 'center', borderRadius: '5px', margin: '10px auto', maxWidth: '700px' }}>
+            ⚠️ {authError}
+          </div>
+        )}
+
         {/* HERO BANNER */}
         <div className="gaming-hero">
           <div className="hero-overlay"></div>
           <div className="hero-content">
-            <div className="hero-badge"><FaFire className="flame-icon"/> PREMIUM GAMING LOUNGE</div>
+            <div className="hero-badge"><FaFire className="flame-icon" /> PREMIUM GAMING LOUNGE</div>
             <h1 className="hero-title">ENTER THE GAME<br /><span className="highlight">RULE THE ARENA</span></h1>
             <div className="hero-highlights">
-              <div className="highlight-item"><span className="emoji">🎮</span> {devices.filter(d => d.name.toLowerCase().includes('ps5')).length || 5} PS5 Consoles</div>
-              <div className="highlight-item"><span className="emoji">🖥️</span> {devices.filter(d => d.name.toLowerCase().includes('pc')).length || 5} High-End Rigs</div>
+              {platformOptions.map(p => (
+                <div key={p.key} className="highlight-item">
+                  <span className="emoji">{p.key === 'ps5' ? '🎮' : '🖥️'}</span> {p.count} {p.label} {p.count > 1 ? 'Consoles' : 'Console'}
+                </div>
+              ))}
               <div className="highlight-item"><span className="emoji">🏆</span> Tournaments</div>
             </div>
             <button className="hero-cta" onClick={() => document.getElementById('booking-steps').scrollIntoView({ behavior: 'smooth' })}>
@@ -415,358 +629,474 @@ const GamingZone = () => {
                 </div>
               ))}
             </div>
-            
-            {/* Step 1: Select Platform */}
+
+            {/* ─── Step 1: Select Platform ─── */}
             {currentStep === 1 && (
               <div className="step-card fade-in">
-                <h2>STEP 1 – Select Gaming Platform</h2>
-                <p className="step-subtitle">Choose your preferred gaming experience.</p>
-                <div className="platform-grid">
-                  <div className={`platform-card ${selectedPlatform === 'ps5' ? 'selected' : ''}`} onClick={() => handlePlatformSelect('ps5')}>
-                    <div className="platform-glow"></div>
-                    <div className="platform-icon">🎮</div><h3>PS5 Gaming</h3>
-                    <div className="platform-availability">Available Consoles: {devices.filter(d => d.name.toLowerCase().includes('ps5')).length || 5}</div>
-                    <p>Next-gen gaming on PlayStation 5 with the latest AAA titles and immersive DualSense gameplay.</p>
+                <div className="step-card-inner">
+                  <div className="step-main">
+                    <h2>STEP 1 – Select Gaming Platform</h2>
+                    <p className="step-subtitle">Choose your preferred gaming experience.</p>
+                    <div className="platform-grid">
+                      {platformOptions.map(p => (
+                        <div
+                          key={p.key}
+                          className={`platform-card ${selectedPlatform === p.key ? 'selected' : ''}`}
+                          onClick={() => handlePlatformSelect(p.key)}
+                        >
+                          <div className="platform-glow"></div>
+                          <div className="platform-icon">{p.key === 'ps5' ? '🎮' : '🖥️'}</div>
+                          <h3>{p.label} Gaming</h3>
+                          <div className="platform-availability">Available Consoles: {p.count}</div>
+                          <p>{p.key === 'ps5' ? 'Next-gen gaming on PlayStation 5 with the latest AAA titles.' : 'Play competitive titles on powerful gaming machines built for high framerates.'}</p>
+                        </div>
+                      ))}
+                      <div className={`platform-card ${selectedPlatform === 'tournament' ? 'selected' : ''}`} onClick={() => handlePlatformSelect('tournament')}>
+                        <div className="platform-glow"></div>
+                        <div className="platform-icon">🏆</div>
+                        <h3>Tournaments</h3>
+                        <div className="platform-availability">Live Events</div>
+                        <p>Register for upcoming esports events, local LAN tournaments, and community gatherings.</p>
+                      </div>
+                    </div>
+                    <div className="step-actions">
+                      <button className="btn-secondary" onClick={prevStep} disabled>Back</button>
+                      <button className="btn-primary" onClick={nextStep}>Continue</button>
+                    </div>
                   </div>
-                  <div className={`platform-card ${selectedPlatform === 'pc' ? 'selected' : ''}`} onClick={() => handlePlatformSelect('pc')}>
-                    <div className="platform-glow"></div>
-                    <div className="platform-icon">🖥️</div><h3>Pro PC Arena</h3>
-                    <div className="platform-availability">Available PCs: {devices.filter(d => d.name.toLowerCase().includes('pc')).length || 5} Rigs</div>
-                    <p>Play competitive titles on powerful gaming machines built for high framerates and low latency.</p>
-                  </div>
-                  <div className={`platform-card ${selectedPlatform === 'tournament' ? 'selected' : ''}`} onClick={() => handlePlatformSelect('tournament')}>
-                    <div className="platform-glow"></div>
-                    <div className="platform-icon">🏆</div><h3>Tournaments</h3>
-                    <div className="platform-availability">Live Events</div>
-                    <p>Register for upcoming esports events, local LAN tournaments, and community gatherings.</p>
-                  </div>
+                  {/* Booking Summary inside step card */}
+                  {selectedRate && (
+                    <BookingSummary
+                      selectedPlatform={selectedPlatform}
+                      selectedDuration={selectedDuration}
+                      selectedDate={selectedDate}
+                      selectedTimeSlot={selectedTimeSlot}
+                      selectedDevice={selectedDevice}
+                      cartAddons={cartAddons}
+                      calculateTotal={calculateTotal}
+                      calculateGamingTotal={calculateGamingTotal}
+                      calculateAddonsTotal={calculateAddonsTotal}
+                      selectedRate={selectedRate}
+                    />
+                  )}
                 </div>
               </div>
             )}
-            
-            {/* Step 2: Select Rate & Duration */}
+
+            {/* ─── Step 2: Select Rate & Duration ─── */}
             {currentStep === 2 && (
               <div className="step-card fade-in">
-                <h2>STEP 2 – Select Rate & Duration</h2>
-                <p className="step-subtitle">Choose the pricing plan and duration that best suits your gaming session.</p>
-                <div className="package-group">
-                  <h3><span className="platform-icon-small">{selectedPlatform === 'ps5' ? '🎮' : '🖥️'}</span> Available Rates</h3>
-                  
-                  {filteredRates.length === 0 ? (
-                    <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8' }}>
-                      No rates currently available for this platform.
-                    </div>
-                  ) : (
-                    <div className="package-grid">
-                      {filteredRates.map((rate) => (
-                        <div key={rate.id} className={`package-card ${selectedRate?.id === rate.id ? 'selected' : ''}`} onClick={() => handleRateSelect(rate)}>
-                          <div className="package-hours" style={{ fontSize: '1.2rem', marginBottom: '8px' }}>{rate.name}</div>
-                          <div className="package-price">₹{rate.price} <span style={{ fontSize: '0.9rem', fontWeight: 'normal' }}>/hr</span></div>
+                <div className="step-card-inner">
+                  <div className="step-main">
+                    <h2>STEP 2 – Select Rate & Duration</h2>
+                    <p className="step-subtitle">Choose the pricing plan and duration that best suits your gaming session.</p>
+                    <div className="package-group">
+                      <h3><span className="platform-icon-small">{selectedPlatform === 'ps5' ? '🎮' : '🖥️'}</span> Available Rates</h3>
+                      {filteredRates.length === 0 ? (
+                        <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8' }}>No rates currently available for this platform.</div>
+                      ) : (
+                        <div className="package-grid">
+                          {filteredRates.map((rate) => (
+                            <div key={rate.id} className={`package-card ${selectedRate?.id === rate.id ? 'selected' : ''}`} onClick={() => handleRateSelect(rate)}>
+                              <div className="package-hours" style={{ fontSize: '1.2rem', marginBottom: '8px' }}>{rate.name}</div>
+                              <div className="package-price">₹{rate.price} <span style={{ fontSize: '0.9rem', fontWeight: 'normal' }}>/hr</span></div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      )}
+                      <div style={{ marginTop: '30px' }}>
+                        <h3><FiClock style={{ verticalAlign: 'middle', marginRight: '8px' }} /> Session Duration</h3>
+                        <div className="duration-pills" style={{ display: 'flex', gap: '10px', marginTop: '12px', flexWrap: 'wrap' }}>
+                          {[1, 2, 3, 4, 5, 8].map(h => (
+                            <button
+                              type="button"
+                              key={h}
+                              className={`btn-outline ${selectedDuration === h ? 'active' : ''}`}
+                              onClick={() => setSelectedDuration(h)}
+                              style={selectedDuration === h ? { background: '#2563eb', color: '#fff', borderColor: '#2563eb' } : {}}
+                            >
+                              {h} Hour{h > 1 ? 's' : ''}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  
-                  <div style={{ marginTop: '30px' }}>
-                    <h3><FiClock style={{ verticalAlign: 'middle', marginRight: '8px' }}/> Session Duration</h3>
-                    <div className="duration-pills" style={{ display: 'flex', gap: '10px', marginTop: '12px', flexWrap: 'wrap' }}>
-                      {[1, 2, 3, 4, 5, 8].map(h => (
-                        <button 
-                          type="button" 
-                          key={h} 
-                          className={`btn-outline ${selectedDuration === h ? 'active' : ''}`} 
-                          onClick={() => setSelectedDuration(h)}
-                          style={selectedDuration === h ? { background: '#2563eb', color: '#fff', borderColor: '#2563eb' } : {}}
-                        >
-                          {h} Hour{h > 1 ? 's' : ''}
-                        </button>
-                      ))}
+                    <div className="step-actions">
+                      <button className="btn-secondary" onClick={prevStep}>Back</button>
+                      <button className="btn-primary" onClick={nextStep} disabled={!selectedRate}>Continue</button>
                     </div>
                   </div>
-
-                </div>
-                <div className="step-actions">
-                  <button className="btn-secondary" onClick={prevStep}>Back</button>
-                  <button className="btn-primary" onClick={nextStep} disabled={!selectedRate}>Continue</button>
+                  {/* Booking Summary inside step card */}
+                  {selectedRate && (
+                    <BookingSummary
+                      selectedPlatform={selectedPlatform}
+                      selectedDuration={selectedDuration}
+                      selectedDate={selectedDate}
+                      selectedTimeSlot={selectedTimeSlot}
+                      selectedDevice={selectedDevice}
+                      cartAddons={cartAddons}
+                      calculateTotal={calculateTotal}
+                      calculateGamingTotal={calculateGamingTotal}
+                      calculateAddonsTotal={calculateAddonsTotal}
+                      selectedRate={selectedRate}
+                    />
+                  )}
                 </div>
               </div>
             )}
-            
-            {/* Step 3: Select Date & Time */}
+
+            {/* ─── Step 3: Select Date, Time & Device ─── */}
             {currentStep === 3 && (
               <div className="step-card fade-in">
-                <h2>STEP 3 – Select Date & Time</h2>
-                <p className="step-subtitle">Choose your preferred date and available time slot.</p>
-                <div className="datetime-selector">
-                  <div className="calendar-section">
-                    <div className="calendar-header">
-                      <button onClick={prevMonth}>‹</button>
-                      <h3>{currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}</h3>
-                      <button onClick={nextMonth}>›</button>
-                    </div>
-                    <div className="calendar-weekdays">
-                      {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(day => (
-                        <div key={day} className="weekday">{day}</div>
-                      ))}
-                    </div>
-                    <div className="calendar-days">
-                      {getCalendarDays().map((date, idx) => (
-                        <div
-                          key={idx}
-                          className={`calendar-day ${date ? '' : 'empty'} ${date && isDateSelected(date) ? 'selected' : ''}`}
-                          onClick={() => date && handleDateSelect(date)}
-                        >
-                          {date ? date.getDate() : ''}
+                <div className="step-card-inner">
+                  <div className="step-main">
+                    <h2>STEP 3 – Select Date, Time & Device</h2>
+                    <p className="step-subtitle">Choose your preferred date, time slot, and optionally a specific station.</p>
+                    <div className="datetime-selector">
+                      <div className="calendar-section">
+                        <div className="calendar-header">
+                          <button onClick={prevMonth}>‹</button>
+                          <h3>{currentMonth.toLocaleString('default', { month: 'long', year: 'numeric' })}</h3>
+                          <button onClick={nextMonth}>›</button>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="timeslots-section">
-                    <h3>Available Time Slots</h3>
-                    {slotsLoading && <div className="slot-live-message">Checking live availability…</div>}
-                    {slotError && <div className="slot-live-message error">{slotError}</div>}
-                    <div className="slot-legend">
-                      <span className="legend-item"><span className="legend-box available"></span> Available</span>
-                      <span className="legend-item"><span className="legend-box booked"></span> Booked</span>
-                      <span className="legend-item"><span className="legend-box selected"></span> Selected</span>
-                    </div>
-                    {['AM', 'PM'].map(period => (
-                      <div key={period} className="slot-group">
-                        <h4>{period === 'AM' ? 'Morning Slots' : 'Evening Slots'}</h4>
-                        <div className="slot-grid">
-                          {availableTimeSlots
-                            .filter(s => s.time.includes(period))
-                            .map((slot, idx) => (
-                              <button
-                                key={idx}
-                                className={`time-slot ${slot.status} ${selectedTimeSlot?.time === slot.time ? 'selected' : ''}`}
-                                disabled={slot.status === 'booked'}
-                                onClick={() => handleTimeSlotSelect(slot)}
-                              >
-                                <span>{slot.time}</span>
-                                <small>{slot.status === 'booked' ? 'Sold Out' : `${slot.availableCount ?? ''} ${selectedPlatform === 'pc' ? 'PC' : 'PS5'} available`}</small>
-                              </button>
-                            ))}
+                        <div className="calendar-weekdays">
+                          {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(day => <div key={day} className="weekday">{day}</div>)}
+                        </div>
+                        <div className="calendar-days">
+                          {getCalendarDays().map((date, idx) => (
+                            <div
+                              key={idx}
+                              className={`calendar-day ${date ? '' : 'empty'} ${date && isDateSelected(date) ? 'selected' : ''}`}
+                              onClick={() => date && handleDateSelect(date)}
+                            >
+                              {date ? date.getDate() : ''}
+                            </div>
+                          ))}
                         </div>
                       </div>
-                    ))}
+
+                      <div className="timeslots-section">
+                        <h3>Available Time Slots</h3>
+                        {slotsLoading && <div className="slot-live-message">Checking live availability…</div>}
+                        {slotError && <div className="slot-live-message error">{slotError}</div>}
+
+                        <div style={{ marginBottom: '20px' }}>
+                          <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold' }}>
+                            Select Specific Station (Optional)
+                          </label>
+                          <select
+                            className="finp"
+                            value={selectedDevice?.id || ''}
+                            onChange={(e) => handleDeviceSelect(e.target.value)}
+                            style={{ width: '100%' }}
+                          >
+                            <option value="">Any Available Station</option>
+                            {availableDevicesForSlot.map(device => (
+                              <option key={device.id} value={device.id}>
+                                {device.name}
+                              </option>
+                            ))}
+                          </select>
+                          {selectedTimeSlot && availableDevicesForSlot.length === 0 && (
+                            <div style={{ marginTop: '6px', color: '#ff6b6b', fontSize: '0.9rem' }}>
+                              ⚠️ No devices are available for this time slot. Please choose another slot.
+                            </div>
+                          )}
+                          {selectedDevice && (
+                            <div style={{ marginTop: '6px', fontSize: '0.9rem', color: '#8ec2ff' }}>
+                              You will be reserving <strong>{selectedDevice.name}</strong>.
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="slot-legend">
+                          <span className="legend-item"><span className="legend-box available"></span> Available</span>
+                          <span className="legend-item"><span className="legend-box booked"></span> Booked</span>
+                          <span className="legend-item"><span className="legend-box selected"></span> Selected</span>
+                        </div>
+                        {['AM', 'PM'].map(period => (
+                          <div key={period} className="slot-group">
+                            <h4>{period === 'AM' ? 'Morning Slots' : 'Evening Slots'}</h4>
+                            <div className="slot-grid">
+                              {filteredTimeSlots
+                                .filter(s => s.time.includes(period))
+                                .map((slot, idx) => (
+                                  <button
+                                    key={idx}
+                                    className={`time-slot ${slot.status} ${selectedTimeSlot?.time === slot.time ? 'selected' : ''}`}
+                                    disabled={slot.status === 'booked'}
+                                    onClick={() => handleTimeSlotSelect(slot)}
+                                  >
+                                    <span>{slot.time}</span>
+                                    <small>
+                                      {slot.status === 'booked'
+                                        ? 'Sold Out'
+                                        : `${slot.availableCount} available`}
+                                    </small>
+                                  </button>
+                                ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="step-actions">
+                      <button className="btn-secondary" onClick={prevStep}>Back</button>
+                      <button className="btn-primary" onClick={nextStep} disabled={!selectedTimeSlot}>Continue</button>
+                    </div>
                   </div>
-                </div>
-                <div className="step-actions">
-                  <button className="btn-secondary" onClick={prevStep}>Back</button>
-                  <button className="btn-primary" onClick={nextStep} disabled={!selectedTimeSlot}>Continue</button>
+                  {/* Booking Summary inside step card */}
+                  {selectedRate && (
+                    <BookingSummary
+                      selectedPlatform={selectedPlatform}
+                      selectedDuration={selectedDuration}
+                      selectedDate={selectedDate}
+                      selectedTimeSlot={selectedTimeSlot}
+                      selectedDevice={selectedDevice}
+                      cartAddons={cartAddons}
+                      calculateTotal={calculateTotal}
+                      calculateGamingTotal={calculateGamingTotal}
+                      calculateAddonsTotal={calculateAddonsTotal}
+                      selectedRate={selectedRate}
+                    />
+                  )}
                 </div>
               </div>
             )}
-            
-            {/* Step 4: Player Details */}
+
+            {/* ─── Step 4: Player Details ─── */}
             {currentStep === 4 && (
               <div className="step-card fade-in">
-                <h2>STEP 4 – Player Details</h2>
-                <p className="step-subtitle">Please provide your information to continue.</p>
-                <div className="player-details-form">
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Full Name *</label>
-                      <input type="text" name="fullName" className="finp" value={playerDetails.fullName} onChange={handlePlayerDetailChange} placeholder="Enter your name" />
-                    </div>
-                    <div className="form-group">
-                      <label>Mobile Number *</label>
-                      <input type="tel" name="mobileNumber" className="finp" value={playerDetails.mobileNumber} onChange={handlePlayerDetailChange} placeholder="Enter mobile number" />
-                    </div>
-                  </div>
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Number of Players</label>
-                      <select name="numberOfPlayers" className="finp" value={playerDetails.numberOfPlayers} onChange={handlePlayersCountChange}>
-                        {[1,2,3,4,5].map(num => <option key={num} value={num}>{num} Player{num > 1 ? 's' : ''}</option>)}
-                      </select>
-                    </div>
-                    {availablePlatformDevices.length > 0 && (
-                      <div className="form-group">
-                        <label>Preferred Station (Optional)</label>
-                        <select name="preferredDevice" className="finp" value={playerDetails.preferredDevice} onChange={handlePlayerDetailChange}>
-                          <option value="">Any Available Station</option>
-                          {availablePlatformDevices.map(d => (
-                            <option key={d.id} value={d.id}>{d.name}</option>
-                          ))}
-                        </select>
+                <div className="step-card-inner">
+                  <div className="step-main">
+                    <h2>STEP 4 – Player Details</h2>
+                    <p className="step-subtitle">Please provide your information to continue.</p>
+                    <div className="player-details-form">
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Full Name *</label>
+                          <input type="text" name="fullName" className="finp" value={playerDetails.fullName} onChange={handlePlayerDetailChange} placeholder="Enter your name" />
+                        </div>
+                        <div className="form-group">
+                          <label>Mobile Number *</label>
+                          <input type="tel" name="mobileNumber" className="finp" value={playerDetails.mobileNumber} onChange={handlePlayerDetailChange} placeholder="Enter mobile number" />
+                        </div>
                       </div>
-                    )}
-                  </div>
-                  
-                  {salespersons.length > 0 && (
-                     <div className="form-row">
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label>Number of Players</label>
+                          <select name="numberOfPlayers" className="finp" value={playerDetails.numberOfPlayers} onChange={handlePlayersCountChange}>
+                            {[1, 2, 3, 4, 5].map(num => <option key={num} value={num}>{num} Player{num > 1 ? 's' : ''}</option>)}
+                          </select>
+                        </div>
                         <div className="form-group">
                           <label>Assisted By (Optional)</label>
                           <select name="salespersonId" className="finp" value={playerDetails.salespersonId} onChange={handlePlayerDetailChange}>
                             <option value="">Select Staff Member</option>
-                            {salespersons.map(sp => (
-                              <option key={sp.id} value={sp.id}>{sp.name}</option>
-                            ))}
+                            {salespersons.map(sp => <option key={sp.id} value={sp.id}>{sp.name}</option>)}
                           </select>
                         </div>
-                     </div>
-                  )}
+                      </div>
 
-                  <div className="form-group">
-                    <label>Select Primary Game *</label>
-                    <div className="games-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '15px' }}>
-                      {games.length === 0 ? (
-                        <div style={{ color: '#94a3b8' }}>Loading games...</div>
-                      ) : (
-                        games.map(game => (
-                          <div 
-                            key={game.id} 
-                            className={`game-card ${playerDetails.selectedGame?.id === game.id ? 'selected' : ''}`} 
-                            onClick={() => handleGameSelect(game)}
-                            style={{ 
-                              background: '#1e293b', border: playerDetails.selectedGame?.id === game.id ? '2px solid #3b82f6' : '2px solid transparent', 
-                              borderRadius: '10px', overflow: 'hidden', cursor: 'pointer', transition: '0.2s'
-                            }}
-                          >
-                            <img src={game.image || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&h=800&fit=crop'} alt={game.name} style={{ width: '100%', height: '100px', objectFit: 'cover' }} onError={handleImageError} />
-                            <div className="game-info" style={{ padding: '12px' }}>
-                              <div className="game-name" style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{game.name}</div>
-                              {game.genre && <div className="game-genre" style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{game.genre}</div>}
+                      <div style={{ marginBottom: '15px', padding: '10px', background: '#1e293b', borderRadius: '8px' }}>
+                        <span style={{ color: '#94a3b8' }}>Playing on: </span>
+                        <strong style={{ color: '#8ec2ff' }}>
+                          {selectedDevice ? selectedDevice.name : `${selectedPlatform.toUpperCase()} (Any Station)`}
+                        </strong>
+                      </div>
+
+                      <div className="form-group">
+                        <label>Select Primary Game *</label>
+                        <div className="games-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '15px' }}>
+                          {filteredGames.length === 0 ? (
+                            <div style={{ color: '#94a3b8', padding: '20px', gridColumn: '1/-1', textAlign: 'center' }}>
+                              No games available for this selection. Please try a different device or platform.
                             </div>
-                          </div>
-                        ))
-                      )}
+                          ) : (
+                            filteredGames.map(game => (
+                              <div
+                                key={game.id}
+                                className={`game-card ${playerDetails.selectedGame?.id === game.id ? 'selected' : ''}`}
+                                onClick={() => handleGameSelect(game)}
+                                style={{
+                                  background: '#1e293b', border: playerDetails.selectedGame?.id === game.id ? '2px solid #3b82f6' : '2px solid transparent',
+                                  borderRadius: '10px', overflow: 'hidden', cursor: 'pointer', transition: '0.2s'
+                                }}
+                              >
+                                <img src={game.image_url || 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&h=800&fit=crop'} alt={game.name} style={{ width: '100%', height: '100px', objectFit: 'cover' }} onError={handleImageError} />
+                                <div className="game-info" style={{ padding: '12px' }}>
+                                  <div className="game-name" style={{ fontWeight: 'bold', fontSize: '0.95rem' }}>{game.name}</div>
+                                  {game.genre && <div className="game-genre" style={{ fontSize: '0.8rem', color: '#94a3b8' }}>{game.genre}</div>}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="step-actions">
+                      <button className="btn-secondary" onClick={prevStep}>Back</button>
+                      <button className="btn-primary" onClick={nextStep} disabled={!playerDetails.fullName || !playerDetails.mobileNumber || !playerDetails.selectedGame}>Continue</button>
                     </div>
                   </div>
-                </div>
-                <div className="step-actions">
-                  <button className="btn-secondary" onClick={prevStep}>Back</button>
-                  <button className="btn-primary" onClick={nextStep} disabled={!playerDetails.fullName || !playerDetails.mobileNumber || !playerDetails.selectedGame}>Continue</button>
+                  {/* Booking Summary inside step card */}
+                  {selectedRate && (
+                    <BookingSummary
+                      selectedPlatform={selectedPlatform}
+                      selectedDuration={selectedDuration}
+                      selectedDate={selectedDate}
+                      selectedTimeSlot={selectedTimeSlot}
+                      selectedDevice={selectedDevice}
+                      cartAddons={cartAddons}
+                      calculateTotal={calculateTotal}
+                      calculateGamingTotal={calculateGamingTotal}
+                      calculateAddonsTotal={calculateAddonsTotal}
+                      selectedRate={selectedRate}
+                    />
+                  )}
                 </div>
               </div>
             )}
 
-            {/* Step 5: Quick Add-ons (Snacks/Drinks) */}
+            {/* ─── Step 5: Add-ons ─── */}
             {currentStep === 5 && (
               <div className="step-card fade-in">
-                <h2>STEP 5 – Grab a Snack? (Optional)</h2>
-                <p className="step-subtitle">Add drinks or snacks to your booking so they are ready when you arrive.</p>
-                
-                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-                  {/* Left Side: Addon Selection */}
-                  <div style={{ flex: '1 1 60%' }}>
-                    {addonButtons.length === 0 ? (
-                       <div style={{ color: '#94a3b8', padding: '20px' }}>No add-ons currently available.</div>
-                    ) : (
-                      <div className="games-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '15px' }}>
-                        {addonButtons.map(button => (
-                          <div 
-                            key={button.id} 
-                            style={{ 
-                              background: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '15px', 
-                              textAlign: 'center', cursor: 'pointer', transition: '0.2s'
-                            }}
-                            onClick={() => handleAddAddon(button)}
-                          >
-                            <div style={{ fontSize: '2rem', marginBottom: '10px' }}>
-                               {button.type === 'drink' ? '🥤' : button.type === 'snack' ? '🍿' : '🍔'}
-                            </div>
-                            <div style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '5px' }}>{button.name}</div>
-                            <div style={{ color: '#8ec2ff', fontWeight: 'bold' }}>₹{parseFloat(button.price).toFixed(2)}</div>
-                            <button style={{ marginTop: '10px', width: '100%', padding: '6px', background: '#3b82f6', border: 'none', borderRadius: '5px', color: '#fff', cursor: 'pointer' }}>Add</button>
+                <div className="step-card-inner">
+                  <div className="step-main">
+                    <h2>STEP 5 – Grab a Snack? (Optional)</h2>
+                    <p className="step-subtitle">Add drinks or snacks to your booking so they are ready when you arrive.</p>
+                    <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                      <div style={{ flex: '1 1 60%' }}>
+                        {addonButtons.length === 0 ? (
+                          <div style={{ color: '#94a3b8', padding: '20px' }}>No add-ons currently available.</div>
+                        ) : (
+                          <div className="games-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '15px' }}>
+                            {addonButtons.map(button => (
+                              <div
+                                key={button.id}
+                                style={{
+                                  background: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '15px',
+                                  textAlign: 'center', cursor: 'pointer', transition: '0.2s'
+                                }}
+                                onClick={() => handleAddAddon(button)}
+                              >
+                                <div style={{ fontSize: '2rem', marginBottom: '10px' }}>
+                                  {button.type === 'drink' ? '🥤' : button.type === 'snack' ? '🍿' : '🍔'}
+                                </div>
+                                <div style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '5px' }}>{button.name}</div>
+                                <div style={{ color: '#8ec2ff', fontWeight: 'bold' }}>₹{parseFloat(button.price).toFixed(2)}</div>
+                                <button style={{ marginTop: '10px', width: '100%', padding: '6px', background: '#3b82f6', border: 'none', borderRadius: '5px', color: '#fff', cursor: 'pointer' }}>Add</button>
+                              </div>
+                            ))}
                           </div>
-                        ))}
+                        )}
                       </div>
-                    )}
-                  </div>
 
-                  {/* Right Side: Addon Cart Summary */}
-                  <div style={{ flex: '1 1 35%', background: '#0f172a', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b', alignSelf: 'flex-start' }}>
-                    <h3 style={{ borderBottom: '1px solid #334155', paddingBottom: '10px', marginBottom: '15px' }}>Your Add-ons</h3>
-                    {cartAddons.length === 0 ? (
-                      <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>No add-ons selected yet.</p>
-                    ) : (
-                      <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-                        {cartAddons.map(item => (
-                          <li key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>{item.name}</div>
-                              <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>₹{item.price.toFixed(2)}</div>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', background: '#1e293b', borderRadius: '6px' }}>
-                               <button onClick={() => handleRemoveAddon(item.id)} style={{ background: 'none', border: 'none', color: '#fff', padding: '6px 10px', cursor: 'pointer' }}><FiMinus size={12}/></button>
-                               <span style={{ padding: '0 8px', fontWeight: 'bold' }}>{item.qty}</span>
-                               <button onClick={() => handleAddAddon(item)} style={{ background: 'none', border: 'none', color: '#fff', padding: '6px 10px', cursor: 'pointer' }}><FiPlus size={12}/></button>
-                            </div>
-                          </li>
-                        ))}
-                        <li style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px', paddingTop: '15px', borderTop: '1px dashed #334155', fontWeight: 'bold' }}>
-                          <span>Add-ons Total:</span>
-                          <span style={{ color: '#8ec2ff' }}>₹{calculateAddonsTotal().toFixed(2)}</span>
-                        </li>
-                      </ul>
-                    )}
+                      <div style={{ flex: '1 1 35%', background: '#0f172a', padding: '20px', borderRadius: '10px', border: '1px solid #1e293b', alignSelf: 'flex-start' }}>
+                        <h3 style={{ borderBottom: '1px solid #334155', paddingBottom: '10px', marginBottom: '15px' }}>Your Add-ons</h3>
+                        {cartAddons.length === 0 ? (
+                          <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>No add-ons selected yet.</p>
+                        ) : (
+                          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                            {cartAddons.map(item => (
+                              <li key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>{item.name}</div>
+                                  <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>₹{item.price.toFixed(2)}</div>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', background: '#1e293b', borderRadius: '6px' }}>
+                                  <button onClick={() => handleRemoveAddon(item.id)} style={{ background: 'none', border: 'none', color: '#fff', padding: '6px 10px', cursor: 'pointer' }}><FiMinus size={12} /></button>
+                                  <span style={{ padding: '0 8px', fontWeight: 'bold' }}>{item.qty}</span>
+                                  <button onClick={() => handleAddAddon(item)} style={{ background: 'none', border: 'none', color: '#fff', padding: '6px 10px', cursor: 'pointer' }}><FiPlus size={12} /></button>
+                                </div>
+                              </li>
+                            ))}
+                            <li style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px', paddingTop: '15px', borderTop: '1px dashed #334155', fontWeight: 'bold' }}>
+                              <span>Add-ons Total:</span>
+                              <span style={{ color: '#8ec2ff' }}>₹{calculateAddonsTotal().toFixed(2)}</span>
+                            </li>
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                    <div className="step-actions">
+                      <button className="btn-secondary" onClick={prevStep}>Back</button>
+                      <button className="btn-primary" onClick={nextStep}>Continue to Checkout</button>
+                    </div>
                   </div>
-                </div>
-
-                <div className="step-actions">
-                  <button className="btn-secondary" onClick={prevStep}>Back</button>
-                  <button className="btn-primary" onClick={nextStep}>Continue to Checkout</button>
+                  {/* Booking Summary inside step card */}
+                  {selectedRate && (
+                    <BookingSummary
+                      selectedPlatform={selectedPlatform}
+                      selectedDuration={selectedDuration}
+                      selectedDate={selectedDate}
+                      selectedTimeSlot={selectedTimeSlot}
+                      selectedDevice={selectedDevice}
+                      cartAddons={cartAddons}
+                      calculateTotal={calculateTotal}
+                      calculateGamingTotal={calculateGamingTotal}
+                      calculateAddonsTotal={calculateAddonsTotal}
+                      selectedRate={selectedRate}
+                    />
+                  )}
                 </div>
               </div>
             )}
-            
-            {/* Step 6: Payment Method & Final Checkout */}
+
+            {/* ─── Step 6: Checkout ─── */}
             {currentStep === 6 && (
               <div className="step-card fade-in">
-                <h2>STEP 6 – Checkout</h2>
-                <p className="step-subtitle">Review your booking and choose your payment option.</p>
-                
-                <div className="checkout-layout">
-                  <div className="payment-methods">
-                    <div 
-                      className={`payment-option ${paymentMethod === 'online' ? 'selected' : ''}`} 
-                      onClick={() => setPaymentMethod('online')}
-                    >
-                      <FiCreditCard className="pay-icon" /> <span>Pay Now</span>
-                    </div>
+                <div className="step-card-inner">
+                  <div className="step-main">
+                    <h2>STEP 6 – Checkout</h2>
+                    <p className="step-subtitle">Review your booking and choose your payment option.</p>
+                    <div className="checkout-layout">
+                      <div className="payment-methods">
+                        <div className={`payment-option ${paymentMethod === 'online' ? 'selected' : ''}`} onClick={() => setPaymentMethod('online')}>
+                          <FiCreditCard className="pay-icon" /> <span>Pay Now</span>
+                        </div>
+                        <div className={`payment-option ${paymentMethod === 'cash' ? 'selected' : ''}`} onClick={() => setPaymentMethod('cash')}>
+                          <FiDollarSign className="pay-icon" /> <span>Cash at Counter</span>
+                        </div>
+                      </div>
 
-                    <div 
-                      className={`payment-option ${paymentMethod === 'cash' ? 'selected' : ''}`} 
-                      onClick={() => setPaymentMethod('cash')}
-                    >
-                      <FiDollarSign className="pay-icon" /> <span>Cash at Counter</span>
+                      <div className="booking-summary-preview">
+                        <h3>Order Summary</h3>
+                        <div className="summary-details">
+                          <div className="summary-row"><span>Platform:</span> <span>{selectedPlatform.toUpperCase()}</span></div>
+                          <div className="summary-row"><span>Rate Plan:</span> <span>{selectedRate?.name}</span></div>
+                          <div className="summary-row"><span>Date & Time:</span> <span>{formatDate(selectedDate)} at {selectedTimeSlot?.time}</span></div>
+                          {selectedDevice && <div className="summary-row"><span>Station:</span> <span>{selectedDevice.name}</span></div>}
+                          <div className="summary-divider"></div>
+                          <div className="summary-row"><span>Gaming Total:</span> <span>₹{calculateGamingTotal().toFixed(2)}</span></div>
+                          {cartAddons.length > 0 && <div className="summary-row"><span>F&B Add-ons ({cartAddons.length}):</span> <span>₹{calculateAddonsTotal().toFixed(2)}</span></div>}
+                          <div className="summary-divider"></div>
+                          <div className="summary-row total"><span>Total Payable:</span> <strong>₹{calculateTotal().toFixed(2)}</strong></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="step-actions">
+                      <button className="btn-secondary" onClick={prevStep} disabled={isProcessing}>Back</button>
+                      <button className="btn-primary confirm-btn" onClick={confirmBooking} disabled={isProcessing}>
+                        {isProcessing ? 'PROCESSING...' : <><FiLock style={{ marginRight: '8px' }} /> CONFIRM & PAY</>}
+                      </button>
                     </div>
                   </div>
-
-                  <div className="booking-summary-preview">
-                    <h3>Order Summary</h3>
-                    <div className="summary-details">
-                      <div className="summary-row"><span>Platform:</span> <span>{selectedPlatform.toUpperCase()}</span></div>
-                      <div className="summary-row"><span>Rate Plan:</span> <span>{selectedRate?.name}</span></div>
-                      <div className="summary-row"><span>Date & Time:</span> <span>{formatDate(selectedDate)} at {selectedTimeSlot?.time}</span></div>
-                      
-                      <div className="summary-divider"></div>
-                      <div className="summary-row"><span>Gaming Total:</span> <span>₹{calculateGamingTotal().toFixed(2)}</span></div>
-                      
-                      {cartAddons.length > 0 && (
-                        <>
-                          <div className="summary-row"><span>F&B Add-ons ({cartAddons.length}):</span> <span>₹{calculateAddonsTotal().toFixed(2)}</span></div>
-                        </>
-                      )}
-                      
-                      <div className="summary-divider"></div>
-                      <div className="summary-row total"><span>Total Payable:</span> <strong>₹{calculateTotal().toFixed(2)}</strong></div>
-                    </div>
-                  </div>
-                </div>
-                <div className="step-actions">
-                  <button className="btn-secondary" onClick={prevStep} disabled={isProcessing}>Back</button>
-                  <button 
-                    className="btn-primary confirm-btn" 
-                    onClick={confirmBooking} 
-                    disabled={isProcessing}
-                  >
-                    {isProcessing ? 'PROCESSING...' : <><FiLock style={{ marginRight: '8px' }} /> CONFIRM & PAY</>}
-                  </button>
+                  {/* Booking Summary inside step card (also shown here for consistency) */}
+                  {selectedRate && (
+                    <BookingSummary
+                      selectedPlatform={selectedPlatform}
+                      selectedDuration={selectedDuration}
+                      selectedDate={selectedDate}
+                      selectedTimeSlot={selectedTimeSlot}
+                      selectedDevice={selectedDevice}
+                      cartAddons={cartAddons}
+                      calculateTotal={calculateTotal}
+                      calculateGamingTotal={calculateGamingTotal}
+                      calculateAddonsTotal={calculateAddonsTotal}
+                      selectedRate={selectedRate}
+                    />
+                  )}
                 </div>
               </div>
             )}
@@ -776,10 +1106,7 @@ const GamingZone = () => {
         {/* ENVIRONMENT SHOWCASE */}
         <div className="environment-section">
           <div className="container">
-            <div className="section-header center">
-              <h2>The Setup</h2>
-              <p>Experience gaming in a premium environment</p>
-            </div>
+            <div className="section-header center"><h2>The Setup</h2><p>Experience gaming in a premium environment</p></div>
             <div className="env-grid">
               {environmentShowcase.map(env => (
                 <div key={env.id} className="env-card">
@@ -797,10 +1124,7 @@ const GamingZone = () => {
         {/* TOP GAMES GALLERY */}
         <div className="gallery-section">
           <div className="container">
-            <div className="section-header center">
-              <h2>Trending Now</h2>
-              <p>Top played games in our arena</p>
-            </div>
+            <div className="section-header center"><h2>Trending Now</h2><p>Top played games in our arena</p></div>
             <div className="gallery-grid">
               {gameGallery.map(game => (
                 <div key={game.id} className={`gallery-card ${game.size}`}>
@@ -815,32 +1139,19 @@ const GamingZone = () => {
             </div>
           </div>
         </div>
-        
-        {selectedRate && currentStep < 6 && (
-          <div className="booking-sticky-summary">
-            <div className="summary-card">
-              <h3>Current Booking</h3>
-              <div className="summary-item"><span>Platform</span><strong>{selectedPlatform.toUpperCase()}</strong></div>
-              <div className="summary-item"><span>Duration</span><strong>{selectedDuration} Hr{selectedDuration > 1 ? 's' : ''}</strong></div>
-              {selectedDate && <div className="summary-item"><span>Date</span><strong>{selectedDate.toLocaleDateString('en-IN', {day:'numeric', month:'short'})}</strong></div>}
-              {selectedTimeSlot && <div className="summary-item"><span>Time</span><strong>{selectedTimeSlot.time}</strong></div>}
-              {cartAddons.length > 0 && <div className="summary-item"><span>Add-ons</span><strong>{cartAddons.reduce((acc, a) => acc + a.qty, 0)} Items</strong></div>}
-              <div className="summary-item total"><span>Total</span><strong>₹{calculateTotal().toFixed(2)}</strong></div>
-            </div>
-          </div>
-        )}
-        
+
+        {/* ─── REMOVED: booking-sticky-summary (no longer fixed) ─── */}
+
         <div className="benefits-section">
           <div className="container">
-             <div className="benefits-grid">
-                <div className="benefit-card"><FiCheckCircle className="b-icon" /> Live Availability</div>
-                <div className="benefit-card"><FaWhatsapp className="b-icon" /> WhatsApp Alerts</div>
-                <div className="benefit-card"><FiCoffee className="b-icon" /> Food & Beverages</div>
-                <div className="benefit-card"><FiShield className="b-icon" /> Secure Accounts</div>
-             </div>
+            <div className="benefits-grid">
+              <div className="benefit-card"><FiCheckCircle className="b-icon" /> Live Availability</div>
+              <div className="benefit-card"><FaWhatsapp className="b-icon" /> WhatsApp Alerts</div>
+              <div className="benefit-card"><FiCoffee className="b-icon" /> Food & Beverages</div>
+              <div className="benefit-card"><FiShield className="b-icon" /> Secure Accounts</div>
+            </div>
           </div>
         </div>
-
       </div>
     </GameZoneLayout>
   );

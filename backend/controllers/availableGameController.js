@@ -139,5 +139,77 @@ exports.deleteGame = async (req, res) => {
     }
 };
 
-// (Optional) Hard delete – uncomment if needed
-// exports.hardDeleteGame = async (req, res) => { ... };
+// ... other methods remain the same except createGame and updateGame
+
+exports.createGame = async (req, res) => {
+    try {
+        const { name, genre, image_url, description, game_device_id } = req.body;
+
+        // Validate required fields
+        if (!name || !genre || !image_url || !game_device_id) {
+            return res.status(400).json({
+                message: 'Name, genre, image URL, and device are required'
+            });
+        }
+
+        // Optional: verify that game_device_id exists (you can add a helper)
+        // const device = await GameDevice.findById(game_device_id);
+        // if (!device) return res.status(400).json({ message: 'Invalid device' });
+
+        const gameId = await AvailableGame.create({
+            name,
+            genre,
+            image_url,
+            description,
+            game_device_id
+        });
+
+        const newGame = await AvailableGame.findById(gameId);
+        res.status(201).json({
+            success: true,
+            message: 'Game created successfully',
+            game: newGame
+        });
+    } catch (error) {
+        console.error('Create Game Error:', error);
+        res.status(500).json({ message: 'Server error creating game' });
+    }
+};
+
+exports.updateGame = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, genre, image_url, description, game_device_id, is_active } = req.body;
+
+        const existingGame = await AvailableGame.findById(id);
+        if (!existingGame) {
+            return res.status(404).json({ message: 'Game not found' });
+        }
+
+        // If game_device_id is provided, verify it exists (optional)
+        // if (game_device_id) { ... }
+
+        const updated = await AvailableGame.update(id, {
+            name: name || existingGame.name,
+            genre: genre || existingGame.genre,
+            image_url: image_url || existingGame.image_url,
+            description: description !== undefined ? description : existingGame.description,
+            game_device_id: game_device_id || existingGame.game_device_id,
+            is_active: is_active !== undefined ? is_active : existingGame.is_active
+        });
+
+        if (updated === 0) {
+            return res.status(400).json({ message: 'Update failed' });
+        }
+
+        const updatedGame = await AvailableGame.findById(id);
+        res.json({
+            success: true,
+            message: 'Game updated successfully',
+            game: updatedGame
+        });
+    } catch (error) {
+        console.error('Update Game Error:', error);
+        res.status(500).json({ message: 'Server error updating game' });
+    }
+};

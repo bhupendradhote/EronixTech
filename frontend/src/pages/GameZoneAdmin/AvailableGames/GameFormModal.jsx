@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FiX } from 'react-icons/fi';
+import gameService from '../../../services/gameService';
 import './AvailableGames.css';
 
 const GameFormModal = ({ game, onClose, onSave }) => {
@@ -8,11 +9,30 @@ const GameFormModal = ({ game, onClose, onSave }) => {
     genre: '',
     image_url: '',
     description: '',
-    platform: 'all',
+    game_device_id: '',
   });
+  const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [fetchingDevices, setFetchingDevices] = useState(true);
   const [error, setError] = useState('');
 
+  // Fetch available devices on mount
+  useEffect(() => {
+    const loadDevices = async () => {
+      try {
+        const data = await gameService.getDevices();
+        setDevices(data);
+      } catch (err) {
+        console.error('Failed to load devices', err);
+        setError('Could not load device list');
+      } finally {
+        setFetchingDevices(false);
+      }
+    };
+    loadDevices();
+  }, []);
+
+  // Populate form when editing an existing game
   useEffect(() => {
     if (game) {
       setFormData({
@@ -20,7 +40,7 @@ const GameFormModal = ({ game, onClose, onSave }) => {
         genre: game.genre || '',
         image_url: game.image_url || '',
         description: game.description || '',
-        platform: game.platform || 'all',
+        game_device_id: game.game_device_id || '',
       });
     } else {
       setFormData({
@@ -28,7 +48,7 @@ const GameFormModal = ({ game, onClose, onSave }) => {
         genre: '',
         image_url: '',
         description: '',
-        platform: 'all',
+        game_device_id: '',
       });
     }
   }, [game]);
@@ -43,8 +63,24 @@ const GameFormModal = ({ game, onClose, onSave }) => {
     setError('');
     setLoading(true);
 
-    if (!formData.name.trim() || !formData.genre.trim() || !formData.image_url.trim()) {
-      setError('Name, genre, and image URL are required');
+    // Validate required fields
+    if (!formData.name.trim()) {
+      setError('Game name is required');
+      setLoading(false);
+      return;
+    }
+    if (!formData.genre.trim()) {
+      setError('Genre is required');
+      setLoading(false);
+      return;
+    }
+    if (!formData.image_url.trim()) {
+      setError('Image URL is required');
+      setLoading(false);
+      return;
+    }
+    if (!formData.game_device_id) {
+      setError('Please select a device');
       setLoading(false);
       return;
     }
@@ -72,6 +108,7 @@ const GameFormModal = ({ game, onClose, onSave }) => {
         <form onSubmit={handleSubmit}>
           {error && <div className="form-error">{error}</div>}
 
+          {/* Name */}
           <div className="form-group">
             <label htmlFor="name">Game Name *</label>
             <input
@@ -85,6 +122,7 @@ const GameFormModal = ({ game, onClose, onSave }) => {
             />
           </div>
 
+          {/* Genre */}
           <div className="form-group">
             <label htmlFor="genre">Genre *</label>
             <input
@@ -98,6 +136,7 @@ const GameFormModal = ({ game, onClose, onSave }) => {
             />
           </div>
 
+          {/* Image URL */}
           <div className="form-group">
             <label htmlFor="image_url">Image URL *</label>
             <input
@@ -116,6 +155,7 @@ const GameFormModal = ({ game, onClose, onSave }) => {
             )}
           </div>
 
+          {/* Description */}
           <div className="form-group">
             <label htmlFor="description">Description</label>
             <textarea
@@ -128,18 +168,25 @@ const GameFormModal = ({ game, onClose, onSave }) => {
             />
           </div>
 
+          {/* Device Dropdown */}
           <div className="form-group">
-            <label htmlFor="platform">Platform</label>
+            <label htmlFor="game_device_id">Device *</label>
             <select
-              id="platform"
-              name="platform"
-              value={formData.platform}
+              id="game_device_id"
+              name="game_device_id"
+              value={formData.game_device_id}
               onChange={handleChange}
+              disabled={fetchingDevices}
+              required
             >
-              <option value="all">All Platforms</option>
-              <option value="ps5">PS5</option>
-              <option value="pc">PC</option>
-              <option value="xbox">Xbox</option>
+              <option value="">
+                {fetchingDevices ? 'Loading devices...' : 'Select a device'}
+              </option>
+              {devices.map((device) => (
+                <option key={device.id} value={device.id}>
+                  {device.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -147,7 +194,7 @@ const GameFormModal = ({ game, onClose, onSave }) => {
             <button type="button" className="btn-secondary" onClick={onClose}>
               Cancel
             </button>
-            <button type="submit" className="btn-primary" disabled={loading}>
+            <button type="submit" className="btn-primary" disabled={loading || fetchingDevices}>
               {loading ? 'Saving...' : game ? 'Update Game' : 'Add Game'}
             </button>
           </div>

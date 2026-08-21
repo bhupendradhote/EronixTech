@@ -11,7 +11,6 @@ class TvSyncService {
 
     updateSessions(sessions) {
         try {
-            // Merge existing storage or overwrite with latest payload
             localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
             if (this.channel) {
                 this.channel.postMessage({ type: 'SESSIONS_UPDATED', sessions });
@@ -90,14 +89,21 @@ class TvSyncService {
       const isPaused = s.paused;
       let timerText = '';
       
-      // If it has a countdown target (Bookings) vs Stopwatch (POS)
-      if (s.type === 'booking') {
-        const remaining = Math.max(0, Math.floor((s.endTime - Date.now()) / 1000));
+      if (s.type === 'booking' && (s.status === 'playing' || (s.statusText && s.statusText.includes('Playing')))) {
+        // For playing bookings: rigorously use playedAt as priority
+        let startMs = s.playedAt || s.startedAt || Date.now();
+        const durationMs = (s.duration_minutes || 60) * 60000;
+        const endMs = startMs + durationMs;
+        const remaining = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
+        
         const hrs = Math.floor(remaining / 3600);
         const mins = Math.floor((remaining % 3600) / 60);
         const secs = remaining % 60;
         timerText = String(hrs).padStart(2,'0')+':'+String(mins).padStart(2,'0')+':'+String(secs).padStart(2,'0');
+      } else if (s.type === 'booking') {
+        timerText = '00:00:00';
       } else {
+        // POS sessions: stopwatch
         const now = isPaused && s.pausedAt ? s.pausedAt : Date.now();
         const activeMs = Math.max(0, now - (s.startedAt || Date.now()) - (s.totalPausedMs || 0));
         const t = Math.max(0, Math.floor(activeMs/1000));

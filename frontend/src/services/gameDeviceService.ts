@@ -1,69 +1,75 @@
-/* eslint-disable preserve-caught-error */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import api from "./api";
 
-// Types
-export interface GameDevice {
-  id?: number;
+export interface Device {
+  id: number;
   name: string;
   is_active?: boolean;
+  platform?: string;
   created_at?: string;
   updated_at?: string;
 }
 
-export interface GameDeviceResponse {
-  success: boolean;
-  devices?: GameDevice[];
-  device?: GameDevice;
-  message?: string;
-}
-
 const gameDeviceService = {
-  // Public
-  getActiveDevices: async (): Promise<GameDeviceResponse> => {
-    const response = await api.get<GameDeviceResponse>("/game-devices");
-    return response.data;
-  },
-
-  // Admin
-  getAllDevices: async (): Promise<GameDeviceResponse> => {
-    const response = await api.get<GameDeviceResponse>("/game-devices/admin");
-    return response.data;
-  },
-
-  getDeviceById: async (id: number): Promise<GameDeviceResponse> => {
-    const response = await api.get<GameDeviceResponse>(`/game-devices/admin/${id}`);
-    return response.data;
-  },
-
-  createDevice: async (data: Omit<GameDevice, 'id' | 'created_at' | 'updated_at'>): Promise<GameDeviceResponse> => {
+  /**
+   * Get all active devices (public)
+   * GET /api/game-devices
+   * Returns an array of devices (id, name)
+   */
+  getActiveDevices: async (): Promise<Device[]> => {
     try {
-      const response = await api.post<GameDeviceResponse>("/game-devices/admin", data);
-      return response.data;
-    } catch (error: any) {
-      const message = error.response?.data?.message || error.message || "Create failed";
-      throw new Error(message);
+      const response = await api.get("/game-devices");
+      // Backend returns { success: true, devices: [...] }
+      const devices = response.data.devices || [];
+      // console.log("📡 [gameDeviceService] Raw response:", response.data);
+      // console.log("📱 [gameDeviceService] Devices array:", devices);
+      return devices;
+    } catch (error) {
+      console.error("❌ Error fetching active devices:", error);
+      return [];
     }
   },
 
-  updateDevice: async (id: number, data: Partial<GameDevice>): Promise<GameDeviceResponse> => {
-    try {
-      const response = await api.put<GameDeviceResponse>(`/game-devices/admin/${id}`, data);
-      return response.data;
-    } catch (error: any) {
-      const message = error.response?.data?.message || error.message || "Update failed";
-      throw new Error(message);
-    }
+  /**
+   * Get all devices (admin only)
+   * GET /api/game-devices/admin
+   * Returns an object with a `devices` array (full details including is_active)
+   */
+  getAllDevices: async (): Promise<{ devices: Device[] }> => {
+    const response = await api.get("/game-devices/admin");
+    return { devices: response.data.devices || [] };
   },
 
-  deleteDevice: async (id: number): Promise<GameDeviceResponse> => {
-    try {
-      const response = await api.delete<GameDeviceResponse>(`/game-devices/admin/${id}`);
-      return response.data;
-    } catch (error: any) {
-      const message = error.response?.data?.message || error.message || "Delete failed";
-      throw new Error(message);
-    }
+  /**
+   * Create a new device (admin only)
+   * POST /api/game-devices/admin
+   */
+  createDevice: async (data: { name: string; is_active?: boolean }): Promise<Device> => {
+    const response = await api.post("/game-devices/admin", { name: data.name });
+    return response.data.device;
+  },
+
+  /**
+   * Update a device (admin only)
+   * PUT /api/game-devices/admin/:id
+   */
+  updateDevice: async (id: number, data: Partial<Device>): Promise<Device> => {
+    const response = await api.put(`/game-devices/admin/${id}`, data);
+    return response.data.device;
+  },
+
+  /**
+   * Soft delete a device (admin only)
+   * DELETE /api/game-devices/admin/:id
+   */
+  deleteDevice: async (id: number): Promise<void> => {
+    await api.delete(`/game-devices/admin/${id}`);
+  },
+
+  /**
+   * Alias for getActiveDevices – kept for compatibility
+   */
+  getDevices: async (): Promise<Device[]> => {
+    return gameDeviceService.getActiveDevices();
   },
 };
 

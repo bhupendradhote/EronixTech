@@ -127,3 +127,13 @@ exports.deleteDevice = async (req, res) => {
         res.status(500).json({ message: 'Server error deleting device' });
     }
 };
+
+exports.getDevices = async (req, res) => {
+    try {
+        const devices = await GameDevice.getAll();
+        res.json({ success: true, devices });
+    } catch (error) {
+        console.error('Get Devices Error:', error);
+        res.status(500).json({ message: 'Server error fetching devices' });
+    }
+};

@@ -3,7 +3,7 @@ import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 
 // Auth Services
 import adminAuthService from "../services/adminAuthService";
-import gameAuthService from "../services/gameAuthService"; // if needed
+import gameAuthService from "../services/gameAuthService";
 
 /* =========================
    USER PAGES
@@ -34,14 +34,15 @@ const PcBuild = lazy(() => import("../pages/User/PcBuild/PcBuild"));
 const PcPreBuild = lazy(() => import("../pages/User/PcPreBuild/PcPreBuild"));
 
 /* =========================
-   COMPARE PAGE (NEW)
+   COMPARE PAGE
 ========================= */
 const Compare = lazy(() => import("../pages/User/Compare/Compare"));
 
-/* =========================
-   GAMING ZONE (PUBLIC) PAGES
-========================= */
-const GamingZone = lazy(() => import("../pages/GameZone/Home/GamingZone"));
+/* ==========================================================
+   GAMING ZONE (PUBLIC) PAGES - ⚡ CONVERTED TO DIRECT IMPORT
+   This removes the lazy-loading delay when navigating here!
+========================================================== */
+import GamingZone from "../pages/GameZone/Home/GamingZone";
 const Tournament = lazy(() => import("../pages/GameZone/Tournaments/Tournaments"));
 const GameStore = lazy(() => import("../pages/GameZone/GameStore/GameStore"));
 const GameContact = lazy(() => import("../pages/GameZone/Contact/Contact"));
@@ -63,7 +64,7 @@ const GameDevices = lazy(() => import("../pages/GameZoneAdmin/GameDevices/GameDe
 const POS = lazy(() => import("../pages/GameZoneAdmin/POS/POS"));
 const Salespersons = lazy(() => import("../pages/GameZoneAdmin/Salespersons/Salespersons")); 
 const SalesHistory = lazy(() => import("../pages/GameZoneAdmin/SalesHistory/SalesHistory"));
-const GameBookingsHistory = lazy(() => import("../pages/GameZoneAdmin/GameBookings/GameBookingsHistory")); // NEW IMPORT
+const GameBookingsHistory = lazy(() => import("../pages/GameZoneAdmin/GameBookings/GameBookingsHistory"));
 const Players = lazy(() => import("../pages/GameZoneAdmin/Players/Players"));
 
 // Coming Soon
@@ -149,7 +150,7 @@ const GameProtectedRoute = ({ children }) => {
 };
 
 /* =========================
-   SCROLL TO TOP HELper (FIXES GLITCH)
+   SCROLL TO TOP HELPER
 ========================= */
 const ScrollToTop = () => {
   const { pathname } = useLocation();
@@ -216,7 +217,7 @@ function AppRoutes() {
         <Route path="/pc-pre-build" element={<PcPreBuild />} />
         <Route path="/coming-soon" element={<ComingSoon />} />
 
-        {/* ===== NEW COMPARE ROUTE ===== */}
+        {/* ===== COMPARE ROUTE ===== */}
         <Route path="/compare" element={<Compare />} />
 
         {/* ================= GAMING ZONE (PUBLIC) ================= */}
@@ -264,7 +265,7 @@ function AppRoutes() {
           <Route path="pos" element={<POS />} />
           <Route path="salespersons" element={<Salespersons />} />
           <Route path="sales-history" element={<SalesHistory />} />
-          <Route path="game-bookings" element={<GameBookingsHistory />} /> {/* NEW ROUTE */}
+          <Route path="game-bookings" element={<GameBookingsHistory />} />
           <Route path="players" element={<Players />} />
         </Route>
 

@@ -21,8 +21,16 @@ function overlap(aStart, aEnd, bStart, bEnd) {
   return aStart < bEnd && aEnd > bStart;
 }
 
+/**
+ * Normalize platform parameter.
+ * If platform is 'all' or empty, return null (skip filtering).
+ * Otherwise return the trimmed string.
+ */
 function normalizePlatform(platform) {
-  return platform ? String(platform).trim() : null;
+  if (!platform) return null;
+  const p = String(platform).trim();
+  if (p.toLowerCase() === 'all') return null;
+  return p;
 }
 
 async function calculateTotal(rateId, durationMinutes, overrideTotal) {
@@ -36,7 +44,8 @@ async function calculateTotal(rateId, durationMinutes, overrideTotal) {
 
 exports.getAvailability = async (req, res) => {
   try {
-    const { date, platform = 'PS5' } = req.query;
+    // Default platform to 'all' so we return ALL active devices
+    const { date, platform = 'all' } = req.query;
     const durationMinutes = Math.max(15, Number(req.query.duration_minutes || 60));
     const slotInterval = Math.max(10, Number(req.query.slot_interval || 30));
     const openTime = req.query.open_time || '10:00';
@@ -94,6 +103,13 @@ exports.getAvailability = async (req, res) => {
   }
 };
 
+// -------------------------------------------------------------------
+// The rest of the controller remains unchanged.
+// (autoAssignDevice, createOnlineBooking, getAdminTimeline,
+//  createWalkInBooking, extendBooking, updateBookingStatus,
+//  getAlerts, getAdminBookingsList, getAdminBookingsStats, receivePayment)
+// -------------------------------------------------------------------
+
 async function autoAssignDevice({ platform, startTime, endTime, preferredDeviceId }) {
   const devices = await GameBooking.getActiveDevices(normalizePlatform(platform));
   if (preferredDeviceId) {
@@ -137,7 +153,6 @@ exports.createOnlineBooking = async (req, res) => {
 
     const price = await calculateTotal(rate_id, durationMinutes, total_price);
     
-    // Explicitly set status to 'pending' if payment mode is online and payment is pending
     const initialStatus = (payment_mode === 'online' && payment_status === 'pending') ? 'pending' : 'confirmed';
 
     const booking = await GameBooking.createSerialized({
