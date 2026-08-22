@@ -66,7 +66,6 @@ type BookingStatus =
   | 'cancelled'
   | 'no_show';
 
-// Added Interfaces to fix TypeScript errors
 interface AdminBookingsParams {
   page?: number;
   limit?: number;
@@ -107,13 +106,13 @@ const gameBookingService = {
     return response.data;
   },
 
-createOnlineBooking: async (payload: CreateOnlineBookingPayload) => {
-  const token = localStorage.getItem('gameToken');
-  const response = await api.post('/game-bookings', payload, {
-    headers: token ? { Authorization: `Bearer ${token}` } : undefined
-  });
-  return response.data;
-},
+  createOnlineBooking: async (payload: CreateOnlineBookingPayload) => {
+    const token = localStorage.getItem('gameToken');
+    const response = await api.post('/game-bookings', payload, {
+      headers: token ? { Authorization: `Bearer ${token}` } : undefined
+    });
+    return response.data;
+  },
 
   getTimeline: async (date: string) => {
     const response = await api.get('/game-bookings/admin/timeline', {
@@ -150,7 +149,6 @@ createOnlineBooking: async (payload: CreateOnlineBookingPayload) => {
     return response.data;
   },
 
-  // Added TypeScript definitions for the parameters
   getAdminBookings: async (params: AdminBookingsParams) => {
     const response = await api.get('/game-bookings/admin/list', { params });
     return response.data;

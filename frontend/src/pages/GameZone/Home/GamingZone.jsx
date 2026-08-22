@@ -50,7 +50,6 @@ const loadRazorpayScript = () => {
   });
 };
 
-// ─── Booking Summary Component (placed inside each step card) ───
 const BookingSummary = ({ selectedPlatform, selectedDuration, selectedDate, selectedTimeSlot, selectedDevice, cartAddons, calculateTotal, calculateGamingTotal, calculateAddonsTotal, selectedRate }) => {
   if (!selectedRate) return null;
 
@@ -151,7 +150,6 @@ const GamingZone = () => {
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotError, setSlotError] = useState('');
 
-  // --- Optimized Instant Loader ---
   const fetchDynamicData = useCallback(async () => {
     try {
       const [ratesRes, gamesRes, devicesRes, buttonsRes, salespersonsRes] = await Promise.all([
@@ -191,7 +189,6 @@ const GamingZone = () => {
     };
   }, [fetchDynamicData]);
 
-  // --- Availability polling ---
   useEffect(() => {
     if (!selectedDate || !selectedRate) return;
     let cancelled = false;
@@ -229,66 +226,103 @@ const GamingZone = () => {
     return () => { cancelled = true; };
   }, [selectedDate, selectedRate, selectedDuration]);
 
-  // --- Helpers ---
   const calculateGamingTotal = () => selectedRate ? (selectedRate.price * selectedDuration) : 0;
   const calculateAddonsTotal = () => cartAddons.reduce((acc, item) => acc + (item.price * item.qty), 0);
   const calculateTotal = () => calculateGamingTotal() + calculateAddonsTotal();
 
-  // --- Dynamically build platform options from devices ---
+  // ---- Platform options from devices ----
   const platformOptions = useMemo(() => {
     const platformMap = new Map();
     devices.forEach(device => {
-      const plat = (device.platform || 'unknown').toLowerCase();
-      if (plat === 'pc' || plat === 'ps5' || plat.includes('playstation')) {
-        const key = plat.includes('ps5') ? 'ps5' : 'pc';
+      const plat = (device.platform || device.name || 'unknown').toLowerCase();
+      let key = null;
+      if (plat.includes('ps5') || plat.includes('playstation')) key = 'ps5';
+      else if (plat.includes('pc') || plat.includes('computer') || plat.includes('desktop')) key = 'pc';
+      if (key) {
         if (!platformMap.has(key)) {
           platformMap.set(key, { key, label: key.toUpperCase(), count: 0 });
         }
         platformMap.get(key).count += 1;
       }
     });
-    if (!platformMap.has('ps5')) platformMap.set('ps5', { key: 'ps5', label: 'PS5', count: 1 });
-    if (!platformMap.has('pc')) platformMap.set('pc', { key: 'pc', label: 'PC', count: 1 });
+    // Ensure both exist even if no devices found
+    if (!platformMap.has('ps5')) platformMap.set('ps5', { key: 'ps5', label: 'PS5', count: 0 });
+    if (!platformMap.has('pc')) platformMap.set('pc', { key: 'pc', label: 'PC', count: 0 });
     return Array.from(platformMap.values());
   }, [devices]);
 
-  // --- Filter games based on selected device or platform ---
-  const getFilteredGames = () => {
+  // ---- Filter rates based on selected platform ----
+  const filteredRates = useMemo(() => {
+    if (selectedPlatform === 'tournament') {
+      return rates; // show all rates for tournaments? Adjust as needed.
+    }
+    return rates.filter(rate => {
+      // If rate has a direct platform property, use it
+      if (rate.platform) {
+        const plat = rate.platform.toLowerCase();
+        if (selectedPlatform === 'ps5') {
+          return plat.includes('ps5') || plat.includes('playstation');
+        } else if (selectedPlatform === 'pc') {
+          return plat.includes('pc') || plat.includes('computer') || plat.includes('desktop');
+        }
+        return true;
+      }
+      // Fallback: match by name
+      const name = (rate.name || '').toLowerCase();
+      if (selectedPlatform === 'ps5') {
+        return name.includes('ps5') || name.includes('playstation');
+      } else if (selectedPlatform === 'pc') {
+        return name.includes('pc') || name.includes('computer') || name.includes('desktop');
+      }
+      return true;
+    });
+  }, [rates, selectedPlatform]);
+
+  // ---- Filter games based on selected platform and device ----
+  const getFilteredGames = useCallback(() => {
     if (selectedPlatform === 'tournament') {
       return games;
     }
 
-    let filterPlatform = null;
+    // If a specific device is selected, filter games that match that device's platform
     if (selectedDevice) {
-      filterPlatform = selectedDevice.platform || selectedDevice.name;
-    } else {
-      const platformKey = selectedPlatform;
-      const platformNames = [];
-      devices.forEach(d => {
-        const devicePlatform = d.platform || d.name;
-        const devicePlatformLower = devicePlatform.toLowerCase();
-        if (platformKey === 'ps5' && (devicePlatformLower.includes('ps5') || devicePlatformLower.includes('playstation'))) {
-          platformNames.push(devicePlatform);
-        } else if (platformKey === 'pc' && (devicePlatformLower.includes('pc') || devicePlatformLower.includes('computer') || devicePlatformLower.includes('desktop'))) {
-          platformNames.push(devicePlatform);
-        }
-      });
-      if (platformNames.length === 0) return games.filter(g => g.platform && g.platform.toLowerCase() === 'all');
+      const devicePlatform = (selectedDevice.platform || selectedDevice.name || '').toLowerCase();
       return games.filter(game => {
-        if (game.platform && game.platform.toLowerCase() === 'all') return true;
-        return platformNames.some(p => p.toLowerCase() === (game.platform || '').toLowerCase());
+        const gamePlatform = (game.platform || '').toLowerCase();
+        // If game has no platform or 'all', include it
+        if (!gamePlatform || gamePlatform === 'all') return true;
+        return gamePlatform === devicePlatform;
       });
     }
 
-    return games.filter(game => {
-      if (game.platform && game.platform.toLowerCase() === 'all') return true;
-      return (game.platform || '').toLowerCase() === filterPlatform.toLowerCase();
+    // Otherwise, filter by the selected platform key
+    const platformKey = selectedPlatform;
+    // Collect all device platform strings that match the key
+    const matchingPlatforms = [];
+    devices.forEach(d => {
+      const p = (d.platform || d.name || '').toLowerCase();
+      if (platformKey === 'ps5' && (p.includes('ps5') || p.includes('playstation'))) {
+        matchingPlatforms.push(p);
+      } else if (platformKey === 'pc' && (p.includes('pc') || p.includes('computer') || p.includes('desktop'))) {
+        matchingPlatforms.push(p);
+      }
     });
-  };
 
-  const filteredGames = getFilteredGames();
+    if (matchingPlatforms.length === 0) {
+      // No devices match, show games that are 'all' or no platform
+      return games.filter(g => !g.platform || g.platform.toLowerCase() === 'all');
+    }
 
-  // --- Compute available devices for the selected time slot ---
+    return games.filter(game => {
+      const gamePlatform = (game.platform || '').toLowerCase();
+      if (!gamePlatform || gamePlatform === 'all') return true;
+      return matchingPlatforms.some(p => p === gamePlatform);
+    });
+  }, [games, devices, selectedPlatform, selectedDevice]);
+
+  const filteredGames = useMemo(() => getFilteredGames(), [getFilteredGames]);
+
+  // ---- Devices available for the selected time slot ----
   const availableDevicesForSlot = useMemo(() => {
     if (selectedTimeSlot && selectedTimeSlot.available_device_ids) {
       return devices.filter(d => selectedTimeSlot.available_device_ids.includes(d.id));
@@ -296,7 +330,7 @@ const GamingZone = () => {
     return devices;
   }, [selectedTimeSlot, devices]);
 
-  // --- Compute filtered time slots based on selected device ---
+  // ---- Time slots filtered by selected device (if any) ----
   const filteredTimeSlots = useMemo(() => {
     if (!selectedDevice) {
       return availableTimeSlots;
@@ -311,7 +345,7 @@ const GamingZone = () => {
     });
   }, [availableTimeSlots, selectedDevice]);
 
-  // --- Handlers ---
+  // ---- Handlers ----
   const handlePlatformSelect = (platform) => {
     setSelectedPlatform(platform);
     setSelectedRate(null);
@@ -374,6 +408,7 @@ const GamingZone = () => {
   const nextStep = () => { if (currentStep < 6) setCurrentStep(currentStep + 1); };
   const prevStep = () => { if (currentStep > 1) setCurrentStep(currentStep - 1); };
 
+  // ---- Confirm booking (unchanged) ----
   const confirmBooking = async () => {
     if (!playerDetails.fullName || !playerDetails.mobileNumber || !selectedRate || !selectedTimeSlot || !playerDetails.selectedGame) {
       alert('Please fill all required fields');
@@ -388,12 +423,33 @@ const GamingZone = () => {
 
     try {
       setIsProcessing(true);
-      const startTime = selectedTimeSlot.start_time ? selectedTimeSlot.start_time.replace(' ', 'T') + '+05:30' : null;
-      const salesperson = salespersons.find(sp => sp.id.toString() === playerDetails.salespersonId.toString());
+      
+      let startTime = null;
+      if (selectedTimeSlot && selectedDate) {
+        const timeMatch = selectedTimeSlot.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (timeMatch) {
+          let hours = parseInt(timeMatch[1], 10);
+          const minutes = parseInt(timeMatch[2], 10);
+          const ampm = timeMatch[3].toUpperCase();
+          
+          if (ampm === 'PM' && hours < 12) hours += 12;
+          if (ampm === 'AM' && hours === 12) hours = 0;
+          
+          const yyyy = selectedDate.getFullYear();
+          const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+          const dd = String(selectedDate.getDate()).padStart(2, '0');
+          const hh = String(hours).padStart(2, '0');
+          const min = String(minutes).padStart(2, '0');
+          
+          startTime = `${yyyy}-${mm}-${dd} ${hh}:${min}:00`;
+        } else {
+          startTime = selectedTimeSlot.start_time || null;
+        }
+      }
 
+      const salesperson = salespersons.find(sp => sp.id.toString() === playerDetails.salespersonId.toString());
       const totalAmount = calculateTotal();
       const finalDeviceId = selectedDevice ? selectedDevice.id : (playerDetails.preferredDevice || null);
-
       const platformForBooking = 'all';
 
       if (paymentMethod === 'cash') {
@@ -547,14 +603,8 @@ const GamingZone = () => {
     size: ['large', 'tall', 'wide', 'small', 'small', 'wide'][index % 6]
   })), [games]);
 
-  const filteredRates = useMemo(() => rates.filter(r =>
-    selectedPlatform === 'ps5' ? r.name.toLowerCase().includes('ps5') :
-      selectedPlatform === 'pc' ? r.name.toLowerCase().includes('pc') : true
-  ), [rates, selectedPlatform]);
-
   const addonButtons = useMemo(() => quickButtons.filter(b => b.type !== 'gaming'), [quickButtons]);
 
-  // Non-blocking skeleton display if dataLoading takes an instant extra tick
   if (dataLoading && rates.length === 0 && games.length === 0) {
     return (
       <GameZoneLayout>
@@ -664,7 +714,6 @@ const GamingZone = () => {
                       <button className="btn-primary" onClick={nextStep}>Continue</button>
                     </div>
                   </div>
-                  {/* Booking Summary inside step card */}
                   {selectedRate && (
                     <BookingSummary
                       selectedPlatform={selectedPlatform}
@@ -693,7 +742,19 @@ const GamingZone = () => {
                     <div className="package-group">
                       <h3><span className="platform-icon-small">{selectedPlatform === 'ps5' ? '🎮' : '🖥️'}</span> Available Rates</h3>
                       {filteredRates.length === 0 ? (
-                        <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8' }}>No rates currently available for this platform.</div>
+                        <div style={{ padding: '20px', textAlign: 'center', color: '#94a3b8' }}>
+                          No rates specifically for {selectedPlatform.toUpperCase()} at the moment. Showing all rates.
+                          {rates.length > 0 && (
+                            <div style={{ marginTop: '10px' }}>
+                              {rates.map(rate => (
+                                <div key={rate.id} className={`package-card ${selectedRate?.id === rate.id ? 'selected' : ''}`} onClick={() => handleRateSelect(rate)} style={{ margin: '5px', display: 'inline-block' }}>
+                                  <div className="package-hours" style={{ fontSize: '1.2rem', marginBottom: '8px' }}>{rate.name}</div>
+                                  <div className="package-price">₹{rate.price} <span style={{ fontSize: '0.9rem', fontWeight: 'normal' }}>/hr</span></div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <div className="package-grid">
                           {filteredRates.map((rate) => (
@@ -726,7 +787,6 @@ const GamingZone = () => {
                       <button className="btn-primary" onClick={nextStep} disabled={!selectedRate}>Continue</button>
                     </div>
                   </div>
-                  {/* Booking Summary inside step card */}
                   {selectedRate && (
                     <BookingSummary
                       selectedPlatform={selectedPlatform}
@@ -845,7 +905,6 @@ const GamingZone = () => {
                       <button className="btn-primary" onClick={nextStep} disabled={!selectedTimeSlot}>Continue</button>
                     </div>
                   </div>
-                  {/* Booking Summary inside step card */}
                   {selectedRate && (
                     <BookingSummary
                       selectedPlatform={selectedPlatform}
@@ -939,7 +998,6 @@ const GamingZone = () => {
                       <button className="btn-primary" onClick={nextStep} disabled={!playerDetails.fullName || !playerDetails.mobileNumber || !playerDetails.selectedGame}>Continue</button>
                     </div>
                   </div>
-                  {/* Booking Summary inside step card */}
                   {selectedRate && (
                     <BookingSummary
                       selectedPlatform={selectedPlatform}
@@ -1024,7 +1082,6 @@ const GamingZone = () => {
                       <button className="btn-primary" onClick={nextStep}>Continue to Checkout</button>
                     </div>
                   </div>
-                  {/* Booking Summary inside step card */}
                   {selectedRate && (
                     <BookingSummary
                       selectedPlatform={selectedPlatform}
@@ -1082,7 +1139,6 @@ const GamingZone = () => {
                       </button>
                     </div>
                   </div>
-                  {/* Booking Summary inside step card (also shown here for consistency) */}
                   {selectedRate && (
                     <BookingSummary
                       selectedPlatform={selectedPlatform}
@@ -1139,8 +1195,6 @@ const GamingZone = () => {
             </div>
           </div>
         </div>
-
-        {/* ─── REMOVED: booking-sticky-summary (no longer fixed) ─── */}
 
         <div className="benefits-section">
           <div className="container">
