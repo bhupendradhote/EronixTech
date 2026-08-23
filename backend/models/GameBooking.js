@@ -1,6 +1,7 @@
 const db = require('../config/db');
 
-const ACTIVE_STATUSES = ['held', 'confirmed', 'playing'];
+// Include 'pending' so that pending bookings also block the slot
+const ACTIVE_STATUSES = ['held', 'confirmed', 'playing', 'pending'];
 
 class GameBooking {
   static async getById(id, connection = db) {
@@ -18,6 +19,7 @@ class GameBooking {
   }
 
   static async getTimeline(date) {
+    console.log('[getTimeline] date:', date);
     const [rows] = await db.execute(
       `SELECT b.id, b.device_id, d.name AS device_name, d.platform AS device_platform,
               b.game_id, g.name AS game_name, b.rate_id, r.name AS rate_name,
@@ -34,10 +36,12 @@ class GameBooking {
        ORDER BY d.name, b.start_time`,
       [date, date, date, date]
     );
+    console.log('[getTimeline] found bookings:', rows.length);
     return rows;
   }
 
   static async getActiveDevices(platform = null) {
+    console.log('[getActiveDevices] platform:', platform);
     const params = [];
     let where = 'WHERE is_active = 1';
     if (platform) {
@@ -48,33 +52,42 @@ class GameBooking {
       `SELECT id, name, platform FROM game_devices ${where} ORDER BY name`,
       params
     );
+    console.log('[getActiveDevices] devices returned:', rows.length);
     return rows;
   }
 
+  // ---------- FIXED findOverlaps ----------
   static async findOverlaps(deviceId, startTime, endTime, excludeId = null, connection = db) {
-    const params = [deviceId, endTime, startTime];
+    console.log('[findOverlaps] deviceId:', deviceId, 'start:', startTime, 'end:', endTime, 'exclude:', excludeId);
+
+    // Generate placeholders for the statuses
+    const statusPlaceholders = ACTIVE_STATUSES.map(() => '?').join(',');
+    const params = [deviceId, ...ACTIVE_STATUSES, endTime, startTime];
+
     let exclude = '';
     if (excludeId) {
       exclude = ' AND id <> ?';
       params.push(excludeId);
     }
-    const [rows] = await connection.execute(
-      `SELECT * FROM game_bookings
-       WHERE device_id = ?
-         AND status IN ('held','confirmed','playing')
-         AND start_time < ?
-         AND end_time > ?
-         ${exclude}
-       ORDER BY start_time`,
-      params
-    );
+
+    const query = `
+      SELECT * FROM game_bookings
+      WHERE device_id = ?
+        AND status IN (${statusPlaceholders})
+        AND start_time < ?
+        AND end_time > ?
+        ${exclude}
+      ORDER BY start_time
+    `;
+
+    const [rows] = await connection.execute(query, params);
+    console.log('[findOverlaps] conflicts found:', rows.length);
     return rows;
   }
 
   static async createSerialized(data) {
     const connection = await db.getConnection();
     const lockName = `game_device_${data.device_id}`;
-    
     try {
       await connection.beginTransaction();
       const [[lock]] = await connection.query('SELECT GET_LOCK(?, 5) AS acquired', [lockName]);
@@ -89,7 +102,6 @@ class GameBooking {
         null,
         connection
       );
-      
       if (conflicts.length) {
         const err = new Error('Selected device is already booked for this time range');
         err.code = 'BOOKING_CONFLICT';
@@ -153,7 +165,6 @@ class GameBooking {
 
     const connection = await db.getConnection();
     const lockName = `game_device_${existing.device_id}`;
-    
     try {
       await connection.beginTransaction();
       const [[lock]] = await connection.query('SELECT GET_LOCK(?, 5) AS acquired', [lockName]);
@@ -204,7 +215,7 @@ class GameBooking {
        WHERE (
           (b.status = 'playing' AND b.end_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL ? MINUTE))
           OR
-          (b.status IN ('held','confirmed') AND b.start_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL ? MINUTE))
+          (b.status IN ('held','confirmed','pending') AND b.start_time BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL ? MINUTE))
        )
        ORDER BY COALESCE(
          CASE WHEN b.status = 'playing' THEN b.end_time ELSE b.start_time END,
@@ -225,7 +236,6 @@ class GameBooking {
     const { page = 1, limit = 20, start_date, end_date, status, booking_source, search } = filters;
     const offset = (Number(page) - 1) * Number(limit);
     const params = [];
-    
     let whereClause = '1=1';
 
     if (start_date) {
@@ -267,7 +277,6 @@ class GameBooking {
       ORDER BY b.created_at DESC
       LIMIT ${Number(limit)} OFFSET ${Number(offset)}
     `;
-    
     const [rows] = await db.execute(query, params);
 
     return {
@@ -304,7 +313,6 @@ class GameBooking {
       total_revenue: rows.reduce((sum, r) => sum + Number(r.total_price), 0),
       total_due: rows.reduce((sum, r) => sum + Number(r.due_amount), 0),
     };
-
     return stats;
   }
 
@@ -314,7 +322,6 @@ class GameBooking {
 
     const newPaidAmount = Number(booking.paid_amount || 0) + Number(amountToAdd);
     const newDueAmount = Number(booking.total_price || 0) - newPaidAmount;
-    
     const finalDue = newDueAmount < 0 ? 0 : newDueAmount;
     const paymentStatus = finalDue <= 0 ? 'paid' : 'partial';
 
@@ -324,7 +331,6 @@ class GameBooking {
        WHERE id = ?`,
       [newPaidAmount, finalDue, mode, paymentStatus, id]
     );
-
     return this.getById(id);
   }
 }

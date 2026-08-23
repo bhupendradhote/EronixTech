@@ -201,17 +201,19 @@ const GamingZone = () => {
         const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`;
         const platform = 'all';
         const durationMinutes = Math.round(selectedDuration * 60);
-
+        
         const data = await gameBookingService.getAvailability({ date: dateStr, platform, durationMinutes });
+        
         if (cancelled) return;
 
         setAvailableTimeSlots((data.slots || []).map(slot => ({
-          ...slot,
-          time: new Date(slot.start_time.replace(' ', 'T')).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-          status: slot.available ? 'available' : 'booked',
-          availableCount: slot.available_count,
-          available_device_ids: slot.available_device_ids || []
-        })));
+  ...slot,
+  time: new Date(slot.start_time.replace(' ', 'T')).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+  // Force "booked" if no devices are free
+  status: (slot.available && slot.available_device_ids?.length > 0) ? 'available' : 'booked',
+  availableCount: slot.available_count,
+  available_device_ids: slot.available_device_ids || []
+})));
       } catch (e) {
         if (!cancelled) {
           setSlotError('Live availability could not be loaded.');
