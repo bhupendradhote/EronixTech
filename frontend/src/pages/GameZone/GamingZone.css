@@ -43,7 +43,6 @@
   background-clip: text;
   color: transparent;
   margin-bottom: 12px;
-  
 }
 .section-header p {
   color: var(--text-muted);
@@ -447,11 +446,175 @@
   white-space: nowrap;
 }
 
+/* ─── DURATION PILLS (improved) ─── */
+.duration-pills {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.duration-pill {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 70px;
+  padding: 14px 20px;
+  background: var(--bg-primary);
+  border: 2px solid var(--border-light);
+  border-radius: 14px;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  font-family: inherit;
+  line-height: 1.2;
+}
+
+.duration-pill:hover {
+  border-color: rgba(255,255,255,0.3);
+  transform: translateY(-2px);
+  background: rgba(255,255,255,0.03);
+}
+
+.duration-pill.active {
+  border-color: var(--accent-main);
+  background: rgba(249, 115, 22, 0.12);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.15), inset 0 0 20px rgba(249, 115, 22, 0.05);
+}
+
+.duration-pill .duration-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-top: 4px;
+  letter-spacing: 0.3px;
+}
+
+.duration-pill.active .duration-label {
+  color: rgba(255,255,255,0.7);
+}
+
+/* ─── DEVICE SELECTION (buttons, mandatory) ─── */
+.device-selection-group {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+
+.device-selection-label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-main);
+  margin-bottom: 12px;
+}
+
+.device-selection-label .required-star {
+  color: var(--danger);
+  margin-left: 2px;
+}
+
+.device-selected-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--success);
+  background: rgba(16, 185, 129, 0.12);
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.device-button-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.device-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: var(--bg-primary);
+  border: 2px solid var(--border-light);
+  border-radius: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  flex: 0 1 auto;
+}
+
+.device-btn:hover {
+  border-color: rgba(255,255,255,0.25);
+  background: rgba(255,255,255,0.03);
+  transform: translateY(-2px);
+}
+
+.device-btn.selected {
+  border-color: var(--accent-main);
+  background: rgba(249, 115, 22, 0.10);
+  color: #fff;
+  box-shadow: 0 0 20px rgba(249, 115, 22, 0.10);
+}
+
+.device-btn .device-btn-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.device-btn .device-btn-name {
+  font-weight: 600;
+}
+
+.device-btn .device-btn-check {
+  color: var(--success);
+  margin-left: 4px;
+}
+
+.device-no-available {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px dashed rgba(239, 68, 68, 0.25);
+  border-radius: 12px;
+  color: var(--text-muted);
+  font-size: 14px;
+  width: 100%;
+}
+
+.device-mandatory-hint {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--warning);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245, 158, 11, 0.06);
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(245, 158, 11, 0.15);
+}
+
 /* Date & Time Selectors */
 .datetime-selector {
   display: grid;
-  grid-template-columns: 1fr 1.5fr;
-  gap: 32px;
+  grid-template-columns: 1fr 2.5fr;
+  gap: 8px;
+  align-items: start;
 }
 
 .calendar-section, .timeslots-section {
@@ -535,7 +698,7 @@
   cursor: pointer;
   color: white;
   transition: all 0.2s;
-  flex: 1 1 calc(33.333% - 12px);
+  flex: 1 1 calc(24.8% - 12px);
   text-align: center;
 }
 .time-slot.available:hover { border-color: rgba(255,255,255,0.4); }
@@ -2861,41 +3024,83 @@
     margin-top: 16px;
 }
 
-/* Responsive */
-@media (max-width: 600px) {
-    .profile-header {
-        flex-direction: column;
-        text-align: center;
-    }
-    .profile-stats {
-        justify-content: center;
-    }
-    .game-profile-card {
-        padding: 20px;
-    }
-}
-/* On mobile, hide user name if needed */
-@media (max-width: 768px) {
-    .user-name {
-        display: none;
-    }
-    .user-profile {
-        gap: 6px;
-    }
-}
+/* =========================================
+   RESPONSIVE BREAKPOINTS (Enhanced)
+   ========================================= */
 
-/* Responsive */
-@media (max-width: 480px) {
-  .auth-card {
-    padding: 28px 20px;
+/* ─── 1200px: Large desktops ─── */
+@media (max-width: 1200px) {
+  .store-main {
+    grid-template-columns: 240px 1fr 280px;
+    gap: 20px;
   }
-  .auth-title {
-    font-size: 26px;
+  .datetime-selector {
+    grid-template-columns: 1fr 2fr;
+    gap: 16px;
   }
 }
 
-/* Responsive */
+/* ─── 1024px: Tablets & small laptops ─── */
 @media (max-width: 1024px) {
+  .gaming-hero {
+    min-height: 450px;
+  }
+  .hero-title {
+    font-size: clamp(36px, 4.5vw, 48px);
+  }
+  .step-card {
+    padding: 28px 24px;
+  }
+  .step-card-inner {
+    flex-direction: column;
+    gap: 20px;
+  }
+  .booking-summary-panel {
+    max-width: 100%;
+    width: 100%;
+    margin-left: 0;
+    margin-top: 16px;
+  }
+  .datetime-selector {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  .calendar-section, .timeslots-section {
+    padding: 18px;
+  }
+  .device-button-grid {
+    justify-content: flex-start;
+  }
+  .device-btn {
+    flex: 1 1 auto;
+    min-width: 120px;
+  }
+  .checkout-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .store-main {
+    grid-template-columns: 1fr;
+  }
+  .store-sidebar, .cart-sidebar {
+    position: static;
+    margin-bottom: 24px;
+  }
+  .cart-sidebar {
+    order: 2;
+  }
+  .gallery-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .featured-card {
+    grid-template-columns: 1fr;
+  }
+  .featured-image {
+    height: 240px;
+  }
+  .booking-sticky-summary {
+    display: none;
+  }
   .contact-form-section {
     grid-template-columns: 1fr;
     gap: 30px;
@@ -2904,7 +3109,123 @@
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ─── 768px: Large phones & small tablets ─── */
 @media (max-width: 768px) {
+  .hero-title {
+    font-size: 30px;
+  }
+  .hero-highlights {
+    gap: 12px;
+  }
+  .highlight-item {
+    font-size: 13px;
+    padding: 6px 16px;
+  }
+  .platform-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .package-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
+  .duration-pills {
+    gap: 8px;
+  }
+  .duration-pill {
+    min-width: 60px;
+    padding: 10px 14px;
+    font-size: 18px;
+  }
+  .duration-pill .duration-label {
+    font-size: 9px;
+  }
+  .time-slot {
+    flex: 1 1 calc(50% - 12px);
+  }
+  .device-btn {
+    padding: 10px 16px;
+    font-size: 13px;
+    min-width: 100px;
+  }
+  .step-actions {
+    flex-direction: column-reverse;
+    gap: 12px;
+  }
+  .step-actions .btn-primary,
+  .step-actions .btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+  .step-indicators {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 30px;
+  }
+  .step-indicators::before {
+    display: none;
+  }
+  .step-label {
+    font-size: 10px;
+  }
+  .step-number {
+    width: 36px;
+    height: 36px;
+    font-size: 14px;
+  }
+  .gallery-grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-auto-rows: 200px;
+  }
+  .gallery-card.large, .gallery-card.wide {
+    grid-column: span 2;
+  }
+  .gallery-card.tall {
+    grid-row: span 2;
+  }
+  .filter-tabs button {
+    padding: 8px 16px;
+    font-size: 12px;
+  }
+  .tournament-grid {
+    grid-template-columns: 1fr;
+  }
+  .hero-stats {
+    gap: 16px;
+  }
+  .form-row, .payment-grid, .modal-container .form-row {
+    grid-template-columns: 1fr;
+  }
+  .modal-container {
+    padding: 24px;
+  }
+  .games-scroller {
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    flex-wrap: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  .game-pill {
+    flex-shrink: 0;
+  }
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+  .products-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+  .product-name {
+    font-size: 14px;
+  }
+  .payment-methods-grid {
+    grid-template-columns: 1fr;
+  }
+  .promo-banner {
+    flex-direction: column;
+    text-align: center;
+  }
   .info-grid {
     grid-template-columns: 1fr;
   }
@@ -2929,201 +3250,204 @@
     align-items: center;
   }
 }
-/* Responsive adjustments for Game Store */
-@media (max-width: 1200px) {
-  .store-main {
-    grid-template-columns: 240px 1fr 280px;
-    gap: 20px;
+
+/* ─── 640px: Small phones ─── */
+@media (max-width: 640px) {
+  .gaming-hero {
+    min-height: 380px;
   }
-}
-@media (max-width: 1024px) {
-  .store-main {
-    grid-template-columns: 1fr;
+  .hero-title {
+    font-size: 26px;
   }
-  .store-sidebar, .cart-sidebar {
-    position: static;
-    margin-bottom: 24px;
-  }
-  .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  }
-  .cart-sidebar {
-    order: 2;
-  }
-}
-@media (max-width: 768px) {
-  .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 16px;
-  }
-  .product-name {
+  .hero-cta {
+    padding: 12px 28px;
     font-size: 14px;
   }
-  .payment-methods-grid {
+  .promo-grid {
     grid-template-columns: 1fr;
+  }
+  .step-card {
+    padding: 20px 16px;
+  }
+  .platform-grid {
+    grid-template-columns: 1fr;
+  }
+  .package-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .duration-pill {
+    min-width: 50px;
+    padding: 8px 12px;
+    font-size: 16px;
+  }
+  .time-slot {
+    flex: 1 1 24%;
+  }
+  .device-btn {
+    min-width: 80px;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .game-zone-header .header-logo h2 {
+    font-size: 1rem;
+
+}
+  .device-btn .device-btn-icon {
+    font-size: 16px;
+  }
+  .calendar-day {
+    font-size: 12px;
+  }
+  .player-details-form {
+    padding: 16px;
   }
   .form-row {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
-  .promo-banner {
-    flex-direction: column;
-    text-align: center;
+  .games-grid {
+    grid-template-columns: 1fr 1fr;
   }
-}
-
-/* =========================================
-   RESPONSIVE ADJUSTMENTS (merged)
-   ========================================= */
-@media (max-width: 1100px) {
-  .booking-sticky-summary { display: none; }
-}
-
-@media (max-width: 1024px) {
-  .gallery-grid { grid-template-columns: repeat(3, 1fr); }
-  .featured-card { grid-template-columns: 1fr; }
-  .featured-image { height: 240px; }
-}
-
-@media (max-width: 768px) {
-  .hero-title { font-size: 36px; }
-  .checkout-layout, .datetime-selector { grid-template-columns: 1fr; }
-  .step-indicators::before { display: none; }
-  .step-indicators { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-  .step-label { font-size: 10px; }
-  .step-card { padding: 24px; }
-  
-  .gallery-grid { grid-template-columns: repeat(2, 1fr); }
-  .gallery-card.large, .gallery-card.wide { grid-column: span 2; }
-  .gallery-card.tall { grid-row: span 2; }
-
-  .filter-tabs button { padding: 8px 16px; font-size: 12px; }
-  .tournament-grid { grid-template-columns: 1fr; }
-  .hero-stats { gap: 16px; }
-  .form-row, .payment-grid, .modal-container .form-row { grid-template-columns: 1fr; }
-  .modal-container { padding: 24px; }
-  .games-scroller {
-    justify-content: flex-start;
-    overflow-x: auto;
-    padding-bottom: 10px;
-    flex-wrap: nowrap;
-    -webkit-overflow-scrolling: touch;
+  .payment-methods {
+    grid-template-columns: 1fr;
   }
-  .game-pill { flex-shrink: 0; }
-  .modal-actions { flex-direction: column-reverse; }
-}
-
-@media (max-width: 480px) {
-  .gallery-grid { grid-template-columns: 1fr; }
-  .gallery-card.large, .gallery-card.wide, .gallery-card.tall { grid-column: span 1; grid-row: span 1; }
-  .countdown-timer { gap: 8px; }
-  .countdown-item { padding: 8px; min-width: 50px; }
-  .countdown-item span { font-size: 20px; }
-  .hero-title { font-size: 28px; }
-}.time-slot small{display:block;font-size:10px;margin-top:4px;opacity:.8}.time-slot.available small{color:#39d98a}.time-slot.booked small{color:#ef596f}.slot-live-message{font-size:12px;color:#9aa4b2;margin:8px 0}.slot-live-message.error{color:#ef596f}
-
-
-/* Add these styles to your GamingZone.css file */
-
-/* ─── Booking Summary Panel (inside step card) ─── */
-.booking-summary-panel {
-  background: #0f172a;
-  border: 1px solid #1e293b;
-  border-radius: 12px;
-  padding: 18px 20px 20px;
-  min-width: 220px;
-  max-width: 260px;
-  flex-shrink: 0;
-  align-self: flex-start;
-  margin-left: 24px;
-}
-
-.booking-summary-panel .summary-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  font-size: 0.95rem;
-  color: #f1f5f9;
-  border-bottom: 1px solid #1e293b;
-  padding-bottom: 12px;
-  margin-bottom: 12px;
-}
-
-.booking-summary-panel .summary-header .summary-icon {
-  color: #3b82f6;
-  font-size: 1.1rem;
-}
-
-.booking-summary-panel .summary-body {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.booking-summary-panel .summary-item {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.85rem;
-  color: #cbd5e1;
-  padding: 2px 0;
-}
-
-.booking-summary-panel .summary-item span {
-  color: #94a3b8;
-}
-
-.booking-summary-panel .summary-item strong {
-  color: #f1f5f9;
-  font-weight: 600;
-}
-
-.booking-summary-panel .summary-item.total {
-  font-size: 0.95rem;
-  font-weight: 700;
-  padding-top: 4px;
-}
-
-.booking-summary-panel .summary-item.total strong {
-  color: #60a5fa;
-  font-size: 1.05rem;
-}
-
-.booking-summary-panel .summary-divider {
-  border-top: 1px dashed #1e293b;
-  margin: 6px 0 8px;
-}
-
-/* ─── Step card inner flex layout ─── */
-.step-card-inner {
-  display: flex;
-  gap: 24px;
-  align-items: flex-start;
-  width: 100%;
-}
-
-.step-main {
-  flex: 1;
-  min-width: 0;
-}
-
-/* ─── Responsive ─── */
-@media (max-width: 1024px) {
-  .step-card-inner {
-    flex-direction: column;
+  .booking-summary-preview {
+    padding: 16px;
   }
-  .booking-summary-panel {
-    max-width: 100%;
-    width: 100%;
-    margin-left: 0;
-    margin-top: 16px;
+  .step-indicators {
+    grid-template-columns: repeat(3, 1fr);
   }
-}
-
-@media (max-width: 640px) {
+  .step-indicator .step-label {
+    display: none;
+  }
+  .step-number {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+  .env-grid {
+    grid-template-columns: 1fr;
+  }
+  .gallery-grid {
+    grid-template-columns: 1fr;
+    grid-auto-rows: 200px;
+  }
+  .gallery-card.large,
+  .gallery-card.wide,
+  .gallery-card.tall {
+    grid-column: span 1;
+    grid-row: span 1;
+  }
+  .countdown-timer {
+    gap: 8px;
+  }
+  .countdown-item {
+    padding: 8px;
+    min-width: 50px;
+  }
+  .countdown-item span {
+    font-size: 20px;
+  }
   .booking-summary-panel {
     padding: 14px 16px 16px;
   }
   .booking-summary-panel .summary-item {
     font-size: 0.8rem;
   }
+}
+
+/* ─── 480px: Extra small devices ─── */
+@media (max-width: 480px) {
+  .hero-title {
+    font-size: 22px;
+  }
+  .hero-badge {
+    font-size: 11px;
+    padding: 4px 12px;
+  }
+  .highlight-item {
+    font-size: 12px;
+    padding: 4px 12px;
+  }
+  .platform-card {
+    padding: 20px 16px;
+  }
+  .package-grid {
+    grid-template-columns: 1fr;
+  }
+  .duration-pills {
+    gap: 6px;
+  }
+  .duration-pill {
+    min-width: 44px;
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+  .duration-pill .duration-label {
+    font-size: 8px;
+  }
+  .device-btn {
+    min-width: 70px;
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+  .device-btn .device-btn-icon {
+    font-size: 14px;
+  }
+  .time-slot {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  .calendar-section, .timeslots-section {
+    padding: 12px;
+  }
+  .slot-legend {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .slot-group h4 {
+    font-size: 12px;
+  }
+  .games-grid {
+    grid-template-columns: 1fr;
+  }
+  .game-card img {
+    width: 40px;
+    height: 40px;
+  }
+  .game-info .game-name {
+    font-size: 12px;
+  }
+  .btn-primary, .btn-secondary {
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+  .auth-card {
+    padding: 28px 20px;
+  }
+  .auth-title {
+    font-size: 26px;
+  }
+}
+
+/* ─── Time slot micro-fixes ─── */
+.time-slot small {
+  display: block;
+  font-size: 10px;
+  margin-top: 4px;
+  opacity: 0.8;
+}
+.time-slot.available small {
+  color: #39d98a;
+}
+.time-slot.booked small {
+  color: #ef596f;
+}
+.slot-live-message {
+  font-size: 12px;
+  color: #9aa4b2;
+  margin: 8px 0;
+}
+.slot-live-message.error {
+  color: #ef596f;
 }
