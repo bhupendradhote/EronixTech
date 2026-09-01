@@ -31,7 +31,6 @@ const categoryController = {
     // 2. Get all categories (Optionally include their sub-categories)
     getAllCategories: async (req, res) => {
         try {
-            // Check if frontend is requesting active-only categories
             const activeOnly = req.query.active === 'true';
             const includeSubCategories = req.query.include_subs === 'true';
 

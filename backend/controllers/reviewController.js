@@ -59,7 +59,6 @@ const reviewController = {
         try {
             const { productId } = req.params;
             
-            // Fetch only 'approved' reviews by default for the frontend
             const reviews = await Review.findByProductId(productId, 'approved');
 
             const formattedReviews = reviews.map(r => parseJSONFields(r));

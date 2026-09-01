@@ -2,7 +2,6 @@ const Product = require('../models/Product');
 const xlsx = require('xlsx'); 
 const fs = require('fs');
 
-// Helper function to safely parse DB JSON strings for the frontend response
 const parseJSONFields = (product) => {
     const jsonFields = ['description', 'key_features', 'images', 'offers', 'variants', 'specifications'];
     jsonFields.forEach(field => {

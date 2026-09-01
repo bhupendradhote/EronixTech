@@ -108,7 +108,6 @@ const calculateOrderTotals = async (items, paymentMode = "prepaid") => {
       
       const lineTotal = unitPrice * quantity;
       
-      // Warranty also gets standard 18% GST calculated to match the frontend Cart
       const warrantyTax = (unitPrice * 0.18) * quantity;
 
       warrantyTotal += lineTotal;

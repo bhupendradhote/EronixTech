@@ -25,7 +25,6 @@ const userAddressController = {
 
             const insertId = await UserAddress.create(insertPayload);
             
-            // Fetch the newly created address to return to the frontend
             const newAddress = await UserAddress.findById(insertId);
 
             res.status(201).json({ success: true, message: 'Address created successfully', data: newAddress });

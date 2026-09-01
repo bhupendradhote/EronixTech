@@ -441,7 +441,7 @@ const Category = () => {
                         <div className="product-badge">
                           {discountPercent >= 50 && <span className="badge-discount">{discountPercent}% OFF</span>}
                           {product.is_new && <span className="badge-new">NEW</span>}
-                          {!isInStock && <span className="badge-out">OUT OF STOCK</span>}
+                          {/* "OUT OF STOCK" badge removed */}
                         </div>
 
                         <div className="product-image">

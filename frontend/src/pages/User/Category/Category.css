@@ -473,45 +473,72 @@
     width: 200px;
 }
 
-/* Product Badge */
+/* Product Badge - fixed width to content */
 .product-badge {
     position: absolute;
     top: 12px;
     left: 12px;
+    background: transparent;
     z-index: 2;
     display: flex;
     flex-direction: column;
     gap: 4px;
+    max-width: 80%;
+    pointer-events: none;
+    align-items: flex-start;  /* <-- prevents stretching */
+}
+
+.badge-discount,
+.badge-new {
+    font-size: 9px;
+    font-weight: 600;
+    padding: 3px 6px;
+    border-radius: 4px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    display: inline-block;
+    width: auto;              /* content-based width */
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .badge-discount {
     background: #ef4444;
     color: white;
-    font-size: 9px;
-    font-weight: 600;
-    padding: 3px 6px;
-    border-radius: 4px;
-    letter-spacing: 0.5px;
 }
 
 .badge-new {
     background: #43a047;
     color: white;
-    font-size: 9px;
-    font-weight: 600;
-    padding: 3px 6px;
-    border-radius: 4px;
-    letter-spacing: 0.5px;
 }
 
-.badge-out {
-    background: #64748b;
-    color: white;
-    font-size: 9px;
-    font-weight: 600;
-    padding: 3px 6px;
-    border-radius: 4px;
-    letter-spacing: 0.5px;
+/* Responsive Badge Adjustments */
+@media (max-width: 768px) {
+    .product-badge {
+        top: 8px;
+        left: 8px;
+        gap: 2px;
+    }
+    .badge-discount,
+    .badge-new {
+        font-size: 7px;
+        padding: 2px 5px;
+    }
+}
+
+@media (max-width: 480px) {
+    .product-badge {
+        top: 4px;
+        left: 4px;
+        gap: 2px;
+    }
+    .badge-discount,
+    .badge-new {
+        font-size: 6px;
+        padding: 1px 4px;
+    }
 }
 
 /* Product Image */
@@ -529,7 +556,7 @@
 .product-img-link {
     display: flex;
     width: 100%;
-        flex-direction: column;
+    flex-direction: column;
     height: 100%;
 }
 
@@ -843,60 +870,62 @@
     align-items: center;
     justify-content: center;
 }
+
 /* =========================================
    Subcategory Scroll Wrapper & Buttons
 ========================================= */
 .subcategory-scroll-wrapper {
-  position: relative;
-  margin-bottom: 20px;
+    position: relative;
+    margin-bottom: 20px;
 }
 
 .subcategory-top-bar {
-  overflow-x: auto;
-  scroll-behavior: smooth;
-  -webkit-overflow-scrolling: touch;
-  /* existing styles remain */
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    /* existing styles remain */
 }
 
 .scroll-btn {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 5;
-  background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  transition: all 0.2s;
-  color: #475569;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 5;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s;
+    color: #475569;
 }
 
 .scroll-btn:hover {
-  background: #f8fafc;
-  border-color: #0056b3;
-  color: #0056b3;
+    background: #f8fafc;
+    border-color: #0056b3;
+    color: #0056b3;
 }
 
 .scroll-btn.left {
-  left: -18px;
+    left: -18px;
 }
 
 .scroll-btn.right {
-  right: -18px;
+    right: -18px;
 }
 
 /* Hide buttons on small screens if needed */
 @media (max-width: 768px) {
-  .scroll-btn {
-    display: none;
-  }
+    .scroll-btn {
+        display: none;
+    }
 }
+
 /* =========================================
    Responsive Design
 ========================================= */
@@ -935,6 +964,17 @@
 
     .close-filters {
         display: block;
+    }
+
+    .product-badge {
+        top: 8px;
+        left: 8px;
+        gap: 2px;
+    }
+    .badge-discount,
+    .badge-new {
+        font-size: 7px;
+        padding: 2px 5px;
     }
 }
 
@@ -1008,5 +1048,26 @@
 
     .list-card .product-actions {
         width: 100%;
+    }
+}
+
+/* Extra small devices */
+@media (max-width: 480px) {
+    .product-badge {
+        top: 4px;
+        left: 4px;
+        gap: 2px;
+    }
+    .badge-discount,
+    .badge-new {
+        font-size: 6px;
+        padding: 1px 4px;
+    }
+    .products-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 12px;
+    }
+    .product-image {
+        height: 120px;
     }
 }
