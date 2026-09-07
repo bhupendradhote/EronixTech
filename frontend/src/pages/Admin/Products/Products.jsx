@@ -22,19 +22,21 @@ const Products = () => {
   const [statusFilter, setStatusFilter] = useState('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [brandFilter, setBrandFilter] = useState('All');
-  const [typeFilter, setTypeFilter] = useState('All'); // NEW
+  const [typeFilter, setTypeFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-const fetchProducts = async () => {
+  // Fetch all products (using a high limit to get everything)
+  const fetchProducts = async () => {
     setIsLoading(true);
     try {
-      const response = await productService.getAllProducts();
-      // Extract the product array from the paginated response object
+      // Request a large number so all products are returned at once.
+      // For 584 products, limit=1000 is safe.
+      const response = await productService.getAllProducts({ limit: 1000, page: 1 });
       setProducts(response.data || []);
     } catch (error) {
       console.error("Error fetching products:", error);
-      setProducts([]); // Fallback to an empty array on error
+      setProducts([]);
     } finally {
       setIsLoading(false);
     }
@@ -100,7 +102,6 @@ const fetchProducts = async () => {
     }
   };
 
-  // Helper for product type display
   const getProductTypeLabel = (type) => {
     if (!type) return 'Normal';
     switch (type) {
@@ -117,6 +118,7 @@ const fetchProducts = async () => {
     return 'type-badge type-normal';
   };
 
+  // Client-side filtering (now works on the full dataset)
   const filteredProducts = products.filter(product => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
@@ -166,67 +168,22 @@ const fetchProducts = async () => {
     }
   };
 
-  // ==========================================
-  // EXCEL IMPORT & EXPORT LOGIC (unchanged)
-  // ==========================================
-
+  // Excel Import / Export (unchanged)
   const handleDownloadTemplate = () => {
     const headers = [
-      'Product Name', 
-      'SKU', 
-      'Product Code', 
-      'UPC',
-      'EAN',
-      'GTIN',
-      'MPN',
-      'Model Number',
-      'Brand ID',
-      'Category ID',
-      'Sub Category ID',
-      'Child Category ID',
-      'Short Description', 
-      'Cost Price',
-      'MRP', 
-      'Selling Price', 
-      'Offer Price',
-      'Tax Percentage',
-      'Stock Quantity', 
-      'Minimum Stock Alert',
-      'Weight',
-      'Height',
-      'Width',
-      'Depth',
-      'Color',
+      'Product Name', 'SKU', 'Product Code', 'UPC', 'EAN', 'GTIN', 'MPN',
+      'Model Number', 'Brand ID', 'Category ID', 'Sub Category ID',
+      'Child Category ID', 'Short Description', 'Cost Price', 'MRP',
+      'Selling Price', 'Offer Price', 'Tax Percentage', 'Stock Quantity',
+      'Minimum Stock Alert', 'Weight', 'Height', 'Width', 'Depth', 'Color',
       'Condition'
     ];
     
     const sampleRow = [
-      'Sample Smartphone',
-      'MOB-123',
-      'PROD-001',
-      '',
-      '',
-      '',
-      '',
-      'SM-G998B',
-      '1',
-      '2',
-      '',
-      '',
-      'A great 6.5-inch smartphone',
-      '10000',
-      '15000',
-      '12999',
-      '',
-      '18',
-      '50',
-      '5',
-      '0.2',
-      '15.5',
-      '7.5',
-      '0.8',
-      'Midnight Blue',
-      'New'
+      'Sample Smartphone', 'MOB-123', 'PROD-001', '', '', '', '', 'SM-G998B',
+      '1', '2', '', '', 'A great 6.5-inch smartphone', '10000', '15000',
+      '12999', '', '18', '50', '5', '0.2', '15.5', '7.5', '0.8',
+      'Midnight Blue', 'New'
     ];
     
     const csvContent = [
@@ -284,7 +241,6 @@ const fetchProducts = async () => {
         </div>
         
         <div className="header-actions" style={{ display: 'flex', gap: '10px' }}>
-          
           <button 
             className="btn-secondary" 
             onClick={handleDownloadTemplate}
@@ -317,7 +273,7 @@ const fetchProducts = async () => {
         </div>
       </div>
 
-      {/* ===== NEW: Product Type Tabs ===== */}
+      {/* Product Type Tabs */}
       <div className="product-type-tabs" style={{ display: 'flex', gap: '6px', marginBottom: '16px', borderBottom: '1px solid #e0e0e0', paddingBottom: '8px' }}>
         <button
           className={`type-tab ${typeFilter === 'All' ? 'active' : ''}`}
@@ -437,12 +393,9 @@ const fetchProducts = async () => {
                 <th>Product</th>
                 <th>Brand</th>
                 <th>Category</th>
-                <th>Product Type</th>  {/* NEW COLUMN */}
+                <th>Product Type</th>
                 <th>Selling Price</th>
                 <th>MRP</th>
-                {/* <th>Stock (Qty)</th> */}
-                {/* <th>Stock Status</th> */}
-                {/* <th>Featured</th> */}
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -450,7 +403,6 @@ const fetchProducts = async () => {
             <tbody>
               {paginatedProducts.length > 0 ? (
                 paginatedProducts.map(product => {
-                  
                   let parsedImages = [];
                   if (product.images) {
                     try {
@@ -469,9 +421,6 @@ const fetchProducts = async () => {
                     ? getImageUrl(firstImagePath)
                     : 'https://placehold.co/60x60?text=No+Image';
 
-                  const stockQuantity = product.stock_quantity ?? 0;
-                  const isLowStock = stockQuantity <= (product.minimum_stock_alert ?? 5);
-                  
                   return (
                     <tr key={product.id}>
                       <td className="product-cell">
@@ -504,27 +453,6 @@ const fetchProducts = async () => {
                           '—'
                         )}
                       </td>
-                      {/* <td>
-                        <div className="stock-info">
-                          <span className={`stock-badge ${isLowStock ? 'stock-low' : 'stock-in'}`}>
-                            {stockQuantity > 0 ? `${stockQuantity} units` : 'Out of Stock'}
-                          </span>
-                        </div>
-                      </td> */}
-                      {/* <td>
-                        <span className={getStockStatusBadgeClass(product.stock_status)}>
-                          {getStockStatusLabel(product.stock_status)}
-                        </span>
-                      </td> */}
-                      {/* <td className="featured-cell">
-                        {product.featured ? (
-                          <span className="featured-badge">
-                            <FiStar size={14} /> Featured
-                          </span>
-                        ) : (
-                          <span className="not-featured">—</span>
-                        )}
-                      </td> */}
                       <td>
                         <button className={`status-toggle status-${product.status}`} onClick={() => handleToggleStatus(product)}>
                           {product.status ? product.status.charAt(0).toUpperCase() + product.status.slice(1) : ''}
@@ -539,7 +467,7 @@ const fetchProducts = async () => {
                 })
               ) : (
                 <tr>
-                  <td colSpan="12" className="no-data">No products found for these filters.</td>
+                  <td colSpan="8" className="no-data">No products found for these filters.</td>
                 </tr>
               )}
             </tbody>

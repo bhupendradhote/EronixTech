@@ -216,7 +216,7 @@ const AdminSidebar = ({ isCollapsed }) => {
             </Link>
           </li>
 
-          <li title="Reports">
+          {/* <li title="Reports">
             <Link
               to="/admin/reports"
               className={isActive('/admin/reports')}
@@ -234,7 +234,7 @@ const AdminSidebar = ({ isCollapsed }) => {
               <FiPercent className="nav-icon" />
               <span className="link-text">Discounts</span>
             </Link>
-          </li>
+          </li> */}
         </ul>
 
         <div className="nav-divider"></div>
