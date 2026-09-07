@@ -94,7 +94,7 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
-// ---------- Product Card (memoized) ----------
+// ---------- Product Card ----------
 const ProductCard = memo(({
   product,
   wishlist,
@@ -230,7 +230,7 @@ const ProductCard = memo(({
   );
 });
 
-// ---------- Category Section Component ----------
+// ---------- Category Section ----------
 const CategorySection = memo(({
   category,
   products,
@@ -248,7 +248,20 @@ const CategorySection = memo(({
   scrollContainer,
   defaultImg
 }) => {
-  const categoryProducts = products.filter(p => p.category_id === category.id);
+  // --- FIXED: products belong only via category_id OR (if no category_id then via sub_category_id) ---
+  const subCategoryIds = (category.sub_categories || []).map(sub => Number(sub.id));
+  const categoryProducts = products.filter(p => {
+    const catId = Number(p.category_id);
+    const subCatId = Number(p.sub_category_id);
+
+    // If product has a category_id, it belongs exclusively to that category
+    if (catId) {
+      return catId === Number(category.id);
+    }
+    // Otherwise, check sub_category_id
+    return subCatId && subCategoryIds.includes(subCatId);
+  });
+
   const subCats = category.sub_categories || [];
   const cardBackgrounds = ['#E6F2FE', '#EAE6FA', '#E2F4EA', '#FBEAE9', '#F9E6EF'];
 
@@ -394,7 +407,7 @@ const CategorySection = memo(({
   );
 });
 
-// ---------- Main Home Component ----------
+// ---------- Main Home ----------
 function Home() {
   const navigate = useNavigate();
   const { addToCompare } = useCompare();
@@ -416,7 +429,7 @@ function Home() {
   const showToast = useCallback((message, type = 'success') => setToast({ message, type }), []);
   const API_URL = "http://localhost:5000";
 
-  // ---------- Helpers ----------
+  // Helpers
   const getProductImage = useCallback((product) => {
     try {
       let images = product.images;
@@ -442,7 +455,7 @@ function Home() {
     text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
   , []);
 
-  // ---------- Fetch Wishlist ----------
+  // Fetch Wishlist
   useEffect(() => {
     const fetchWishlist = async () => {
       const token = localStorage.getItem('token');
@@ -457,7 +470,7 @@ function Home() {
     fetchWishlist();
   }, [isAuthModalOpen]);
 
-  // ---------- Fetch Home Data ----------
+  // Fetch Home Data (limit increased to 1000)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -466,7 +479,7 @@ function Home() {
       };
 
       const [productsRes, categoriesRes, brandsRes, bannersRes] = await Promise.all([
-        safeFetch(productService.getAllProducts({ activeOnly: true, limit: 100 })),
+        safeFetch(productService.getAllProducts({ activeOnly: true, limit: 1000 })),
         safeFetch(categoryService.getAllCategories(true, true)),
         safeFetch(brandService.getAllBrands(true)),
         safeFetch(bannerService.getAllBanners(true))
@@ -483,7 +496,7 @@ function Home() {
     fetchData();
   }, []);
 
-  // ---------- Background Rating Fetch ----------
+  // Background Rating Fetch
   useEffect(() => {
     if (data.products.length === 0) return;
     let isMounted = true;
@@ -505,7 +518,7 @@ function Home() {
     return () => { isMounted = false; };
   }, [data.products]);
 
-  // ---------- Action Handlers ----------
+  // Action Handlers
   const handleAddToCart = useCallback(async (e, product) => {
     e.preventDefault();
     e.stopPropagation();
@@ -582,7 +595,6 @@ function Home() {
     }
   }, [addToCompare, showToast]);
 
-  // ---------- Scroll Helper ----------
   const scrollContainer = useCallback((id, direction) => {
     const container = document.getElementById(id);
     if (container) {
@@ -590,7 +602,7 @@ function Home() {
     }
   }, []);
 
-  // ---------- Memoized Data ----------
+  // Memoized data
   const activeProducts = useMemo(() => data.products.filter(p => p.status === 'active'), [data.products]);
 
   const banners = useMemo(() => ({
@@ -609,17 +621,16 @@ function Home() {
   const featuredProducts = useMemo(() => activeProducts.filter(p => p.featured || p.is_new).slice(0, 10), [activeProducts]);
   const cityDeliveryProducts = useMemo(() => activeProducts.slice(0, 12), [activeProducts]);
 
-  // All active categories, regardless of product count
   const activeCategories = useMemo(() =>
     data.categories
-      .filter(cat => cat.is_active !== false) // if is_active field exists, else include all
+      .filter(cat => cat.is_active !== false)
       .sort((a, b) => (a.display_order || 0) - (b.display_order || 0)),
     [data.categories]
   );
 
   const trustedBrandsLogos = ['intel.', 'AMD', 'NVIDIA', 'ASUS', 'MSI', 'GIGABYTE', 'CORSAIR', 'SAMSUNG', 'crucial', 'WD'];
 
-  // ---------- Loading State ----------
+  // Loading
   if (loading) {
     return (
       <Layout>
@@ -773,7 +784,7 @@ function Home() {
           </div>
         )}
 
-        {/* ---------- DYNAMIC CATEGORY SECTIONS ---------- */}
+        {/* Dynamic Category Sections */}
         {activeCategories.map(category => (
           <CategorySection
             key={category.id}
