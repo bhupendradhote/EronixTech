@@ -25,6 +25,7 @@ import defaultImg from '../../../assets/images/products/pr1.png';
 import gamingZonePromo from '../../../assets/images/home/1.png';
 import buildPcPromo from '../../../assets/images/home/2.png';
 import businessSolutionsPromo from '../../../assets/images/home/3.png';
+import gearUpBg from '../../../assets/images/banner/erbann.jpeg';
 
 // ---------- SVG Icons ----------
 const HeartIcon = ({ filled }) => (
@@ -246,19 +247,16 @@ const CategorySection = memo(({
   calculateDiscount,
   generateSlug,
   scrollContainer,
-  defaultImg
+  defaultImg,
+  gearUpBgImage
 }) => {
-  // --- FIXED: products belong only via category_id OR (if no category_id then via sub_category_id) ---
   const subCategoryIds = (category.sub_categories || []).map(sub => Number(sub.id));
   const categoryProducts = products.filter(p => {
     const catId = Number(p.category_id);
     const subCatId = Number(p.sub_category_id);
-
-    // If product has a category_id, it belongs exclusively to that category
     if (catId) {
       return catId === Number(category.id);
     }
-    // Otherwise, check sub_category_id
     return subCatId && subCategoryIds.includes(subCatId);
   });
 
@@ -267,7 +265,6 @@ const CategorySection = memo(({
 
   return (
     <div className="electrical-section-wrapper" key={category.id}>
-      {/* Header */}
       <div className="img-style-header">
         <div className="img-header-left">
           <h2><span className="img-slash"></span> {category.name.toUpperCase()}</h2>
@@ -280,7 +277,6 @@ const CategorySection = memo(({
 
       <div className="electrical-container">
         <div className="img-style-top-row">
-          {/* Left Block: Brands & Trust Badges */}
           <div className="img-brands-block">
             <div className="img-brands-header">
               <h3>TOP BRANDS & RELATED CATEGORIES</h3>
@@ -322,13 +318,20 @@ const CategorySection = memo(({
               </div>
             </div>
 
-            <div className="img-gear-up-text">
-              <span className="cursive-text">Gear Up</span><br/>
-              <span className="cursive-text">Your Tech Life</span>
-            </div>
+            <div
+              className="img-gear-up-text"
+              style={{
+                backgroundImage: `url(${gearUpBgImage})`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundRepeat: 'no-repeat',
+                minHeight: '140px',
+                borderRadius: '12px',
+                marginTop: '8px',
+              }}
+            />
           </div>
 
-          {/* Right Block: Sub‑category Cards */}
           <div className="img-categories-block">
             {subCats.length > 0 ? (
               subCats.slice(0, 5).map((sub, index) => {
@@ -358,7 +361,6 @@ const CategorySection = memo(({
           </div>
         </div>
 
-        {/* Footer Strip */}
         <div className="img-footer-strip">
           <span>PREMIUM BRANDS</span>
           <span className="img-divider">|</span>
@@ -367,7 +369,6 @@ const CategorySection = memo(({
           <span>COMPLETE ACCESSORIES</span>
         </div>
 
-        {/* Product Slider */}
         <div className="electrical-products-wrapper">
           <div className="slider-wrapper">
             {categoryProducts.length > 4 && (
@@ -412,7 +413,6 @@ function Home() {
   const navigate = useNavigate();
   const { addToCompare } = useCompare();
 
-  // State
   const [data, setData] = useState({
     products: [],
     categories: [],
@@ -427,24 +427,32 @@ function Home() {
   const [wishlist, setWishlist] = useState([]);
 
   const showToast = useCallback((message, type = 'success') => setToast({ message, type }), []);
-  const API_URL = "http://localhost:5000";
 
-  // Helpers
+  // Helper to build absolute URLs and upgrade HTTP to HTTPS
+  const getFullUrl = useCallback((url) => {
+    if (!url) return url;
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      if (window.location.protocol === 'https:' && url.startsWith('http://')) {
+        return url.replace('http://', 'https://');
+      }
+      return url;
+    }
+    const cleanPath = url.startsWith('/') ? url : '/' + url;
+    return window.location.origin + cleanPath;
+  }, []);
+
   const getProductImage = useCallback((product) => {
     try {
       let images = product.images;
       if (typeof images === "string") images = JSON.parse(images);
       if (!Array.isArray(images) || images.length === 0) return defaultImg;
-
       const primary = images.find(img => img.is_primary) || images[0];
       if (!primary?.image_path) return defaultImg;
-      if (primary.image_path.startsWith("http")) return primary.image_path;
-
-      return `${API_URL}/${primary.image_path.replace(/^\/+/, "")}`;
+      return getFullUrl(primary.image_path);
     } catch {
       return defaultImg;
     }
-  }, [API_URL]);
+  }, [getFullUrl]);
 
   const calculateDiscount = useCallback((mrp, sellingPrice) => {
     if (!mrp || !sellingPrice || mrp <= sellingPrice) return 0;
@@ -455,7 +463,6 @@ function Home() {
     text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
   , []);
 
-  // Fetch Wishlist
   useEffect(() => {
     const fetchWishlist = async () => {
       const token = localStorage.getItem('token');
@@ -463,14 +470,11 @@ function Home() {
       try {
         const items = await wishlistService.getWishlist();
         setWishlist(items.map(item => item.id));
-      } catch {
-        // silent
-      }
+      } catch {}
     };
     fetchWishlist();
   }, [isAuthModalOpen]);
 
-  // Fetch Home Data (limit increased to 1000)
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -496,11 +500,9 @@ function Home() {
     fetchData();
   }, []);
 
-  // Background Rating Fetch
   useEffect(() => {
     if (data.products.length === 0) return;
     let isMounted = true;
-
     const fetchRatings = async () => {
       for (const product of data.products) {
         if (!isMounted) break;
@@ -509,16 +511,13 @@ function Home() {
           if (isMounted) {
             setRatingStats(prev => ({ ...prev, [product.id]: stats }));
           }
-        } catch {
-          // ignore
-        }
+        } catch {}
       }
     };
     fetchRatings();
     return () => { isMounted = false; };
   }, [data.products]);
 
-  // Action Handlers
   const handleAddToCart = useCallback(async (e, product) => {
     e.preventDefault();
     e.stopPropagation();
@@ -558,12 +557,10 @@ function Home() {
       setIsAuthModalOpen(true);
       return;
     }
-
     const isWishlisted = wishlist.includes(product.id);
     setWishlist(prev =>
       isWishlisted ? prev.filter(id => id !== product.id) : [...prev, product.id]
     );
-
     try {
       if (isWishlisted) {
         await wishlistService.removeFromWishlist(product.id);
@@ -602,20 +599,31 @@ function Home() {
     }
   }, []);
 
-  // Memoized data
   const activeProducts = useMemo(() => data.products.filter(p => p.status === 'active'), [data.products]);
 
-  const banners = useMemo(() => ({
-    hero: data.banners
-      .filter(b => b.banner_type && String(b.banner_type).toLowerCase() === 'hero')
-      .sort((a, b) => a.display_order - b.display_order),
-    mini: data.banners
-      .filter(b => b.banner_type && String(b.banner_type).toLowerCase() === 'mini')
-      .slice(0, 4),
-    promo: data.banners
-      .filter(b => b.banner_type && String(b.banner_type).toLowerCase() === 'promo')
-      .slice(0, 3)
-  }), [data.banners]);
+  // Process banners: convert URLs to absolute HTTPS and prepare for HeroBanner
+  const processedBanners = useMemo(() => {
+    const process = (b) => ({
+      ...b,
+      image_url: getFullUrl(b.image_url),
+      mobile_image_url: b.mobile_image_url ? getFullUrl(b.mobile_image_url) : null,
+    });
+
+    return {
+      hero: data.banners
+        .filter(b => b.banner_type && String(b.banner_type).toLowerCase() === 'hero')
+        .sort((a, b) => a.display_order - b.display_order)
+        .map(process),
+      mini: data.banners
+        .filter(b => b.banner_type && String(b.banner_type).toLowerCase() === 'mini')
+        .slice(0, 4)
+        .map(process),
+      promo: data.banners
+        .filter(b => b.banner_type && String(b.banner_type).toLowerCase() === 'promo')
+        .slice(0, 3)
+        .map(process),
+    };
+  }, [data.banners, getFullUrl]);
 
   const bestsellers = useMemo(() => activeProducts.filter(p => p.is_best_seller).slice(0, 10), [activeProducts]);
   const featuredProducts = useMemo(() => activeProducts.filter(p => p.featured || p.is_new).slice(0, 10), [activeProducts]);
@@ -630,7 +638,6 @@ function Home() {
 
   const trustedBrandsLogos = ['intel.', 'AMD', 'NVIDIA', 'ASUS', 'MSI', 'GIGABYTE', 'CORSAIR', 'SAMSUNG', 'crucial', 'WD'];
 
-  // Loading
   if (loading) {
     return (
       <Layout>
@@ -689,9 +696,9 @@ function Home() {
       `}</style>
 
       <main className="eronix-main-container container" style={{ animation: 'fadeIn 0.5s ease-in-out' }}>
-        <HeroBanner banners={banners.hero} />
+        {/* Pass processed hero banners */}
+        <HeroBanner banners={processedBanners.hero} />
 
-        {/* Quick Categories */}
         <section className="home-quick-categories" aria-label="Shop by category">
           {data.categories
             .slice()
@@ -712,14 +719,12 @@ function Home() {
           </Link>
         </section>
 
-        {/* Feature Promos */}
         <section className="home-feature-promos" aria-label="Featured offers">
           <Link to="/gaming-zone" className="home-feature-promo-card"><img src={gamingZonePromo} alt="Gaming Zone" loading="lazy" /></Link>
           <Link to="/pc-build" className="home-feature-promo-card"><img src={buildPcPromo} alt="Build Your PC" loading="lazy" /></Link>
           <Link to="/contact" className="home-feature-promo-card"><img src={businessSolutionsPromo} alt="Business Solutions" loading="lazy" /></Link>
         </section>
 
-        {/* New Arrivals */}
         <div className="delivery-cities-section">
           <div className="delivery-header">
             <h2>
@@ -752,7 +757,6 @@ function Home() {
           </div>
         </div>
 
-        {/* Bestsellers */}
         {bestsellers.length > 0 && (
           <div className="section">
             <div className="section-head">
@@ -784,7 +788,6 @@ function Home() {
           </div>
         )}
 
-        {/* Dynamic Category Sections */}
         {activeCategories.map(category => (
           <CategorySection
             key={category.id}
@@ -803,10 +806,10 @@ function Home() {
             generateSlug={generateSlug}
             scrollContainer={scrollContainer}
             defaultImg={defaultImg}
+            gearUpBgImage={gearUpBg}
           />
         ))}
 
-        {/* Featured Arrivals */}
         {featuredProducts.length > 0 && (
           <div className="section">
             <div className="section-head">
@@ -838,7 +841,6 @@ function Home() {
           </div>
         )}
 
-        {/* Trusted Brands */}
         <div className="trusted-brands-section">
           <div className="tb-header">
             <div className="tb-line-wrapper left"><span className="tb-dot"></span><span className="tb-line"></span></div>
@@ -852,7 +854,6 @@ function Home() {
           </div>
         </div>
 
-        {/* Popular Searches */}
         <div className="popular-searches white-bg">
           <div className="popular-search-container">
             <p className="search-heading">Popular searches on EronixTech</p>

@@ -4,11 +4,12 @@ export interface Banner {
   id: number;
   title: string;
   subtitle?: string | null;
-  image_url?: string | null;
+  image_url?: string | null;          // Desktop image
+  mobile_image_url?: string | null;   // Mobile image; falls back to image_url
   link_url?: string | null;
   banner_type: string;
   display_order: number;
-  is_active: boolean;
+  is_active: boolean | number;
   created_at: string;
   updated_at: string;
 }
@@ -18,7 +19,9 @@ const bannerService = {
     const params = new URLSearchParams();
     if (activeOnly) params.append("active", "true");
 
-    const response = await api.get<{ success: boolean; data: Banner[] }>(`/banners?${params.toString()}`);
+    const response = await api.get<{ success: boolean; data: Banner[] }>(
+      `/banners?${params.toString()}`
+    );
     return response.data.data;
   },
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FiSearch,
   FiPlus,
@@ -11,7 +11,8 @@ import {
   FiEye,
   FiEyeOff,
   FiFilter,
-  FiMove
+  FiMonitor,
+  FiSmartphone
 } from 'react-icons/fi';
 import bannerService from '../../../services/bannerService';
 import './BannerManagement.css';
@@ -19,19 +20,19 @@ import './BannerManagement.css';
 const BannerManagement = () => {
   const [banners, setBanners] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  
-  // Filter States
   const [filterType, setFilterType] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
-  const [itemsPerPage, setItemsPerPage] = useState(8); 
-  
+  const [itemsPerPage, setItemsPerPage] = useState(8);
   const [currentPage, setCurrentPage] = useState(1);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingBanner, setEditingBanner] = useState(null);
-  
-  // Image Upload States
-  const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState('');
+
+  const [desktopImageFile, setDesktopImageFile] = useState(null);
+  const [mobileImageFile, setMobileImageFile] = useState(null);
+  const [desktopImagePreview, setDesktopImagePreview] = useState('');
+  const [mobileImagePreview, setMobileImagePreview] = useState('');
+  const [removeMobileImage, setRemoveMobileImage] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const bannerTypes = ['Hero', 'Promotional', 'Sidebar', 'Footer', 'Popup'];
 
@@ -43,21 +44,29 @@ const BannerManagement = () => {
     display_order: '',
     is_active: true,
   };
+
   const [formData, setFormData] = useState(initialFormState);
 
-  // --- 1. Fetch data on load ---
   useEffect(() => {
     fetchBanners();
   }, []);
 
-  // Cleanup object URLs to prevent memory leaks
+  // Revoke only locally-created blob URLs.
   useEffect(() => {
     return () => {
-      if (imagePreview && imagePreview.startsWith('blob:')) {
-        URL.revokeObjectURL(imagePreview);
+      if (desktopImagePreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(desktopImagePreview);
       }
     };
-  }, [imagePreview]);
+  }, [desktopImagePreview]);
+
+  useEffect(() => {
+    return () => {
+      if (mobileImagePreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(mobileImagePreview);
+      }
+    };
+  }, [mobileImagePreview]);
 
   const fetchBanners = async () => {
     try {
@@ -68,17 +77,18 @@ const BannerManagement = () => {
     }
   };
 
-  // --- 2. Filter & Pagination Logic ---
-  const filteredBanners = banners.filter(banner => {
-    const matchesSearch = banner.title?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = filterType === 'All' || banner.banner_type === filterType;
-    
-    let matchesStatus = true;
-    if (filterStatus === 'Active') matchesStatus = banner.is_active === true || banner.is_active === 1;
-    if (filterStatus === 'Inactive') matchesStatus = banner.is_active === false || banner.is_active === 0;
+  const filteredBanners = banners
+    .filter((banner) => {
+      const matchesSearch = banner.title?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesType = filterType === 'All' || banner.banner_type === filterType;
 
-    return matchesSearch && matchesType && matchesStatus;
-  }).sort((a, b) => a.display_order - b.display_order); 
+      let matchesStatus = true;
+      if (filterStatus === 'Active') matchesStatus = banner.is_active === true || banner.is_active === 1;
+      if (filterStatus === 'Inactive') matchesStatus = banner.is_active === false || banner.is_active === 0;
+
+      return matchesSearch && matchesType && matchesStatus;
+    })
+    .sort((a, b) => a.display_order - b.display_order);
 
   const totalPages = Math.ceil(filteredBanners.length / itemsPerPage);
 
@@ -95,67 +105,87 @@ const BannerManagement = () => {
     currentPage * itemsPerPage
   );
 
-  // --- 3. Drawer & Form Handlers ---
+  const resetImageState = () => {
+    setDesktopImageFile(null);
+    setMobileImageFile(null);
+    setDesktopImagePreview('');
+    setMobileImagePreview('');
+    setRemoveMobileImage(false);
+  };
+
   const closeDrawer = () => {
     setIsDrawerOpen(false);
     setTimeout(() => {
       setFormData(initialFormState);
-      setImageFile(null);
-      setImagePreview('');
+      resetImageState();
       setEditingBanner(null);
-    }, 300); // Wait for animation before clearing
+    }, 300);
   };
 
   const openAddDrawer = () => {
     setFormData({ ...initialFormState, display_order: banners.length + 1 });
     setEditingBanner(null);
-    setImageFile(null);
-    setImagePreview('');
+    resetImageState();
     setIsDrawerOpen(true);
   };
 
   const openEditDrawer = (banner) => {
     setEditingBanner(banner);
     setFormData({
-      title: banner.title,
+      title: banner.title || '',
       subtitle: banner.subtitle || '',
       link_url: banner.link_url || '',
       banner_type: banner.banner_type || 'Hero',
       display_order: banner.display_order,
       is_active: banner.is_active === 1 || banner.is_active === true,
     });
-    setImageFile(null);
-    setImagePreview(banner.image_url || ''); 
+    setDesktopImageFile(null);
+    setMobileImageFile(null);
+    setDesktopImagePreview(banner.image_url || '');
+    setMobileImagePreview(banner.mobile_image_url || '');
+    setRemoveMobileImage(false);
     setIsDrawerOpen(true);
   };
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
     }));
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setImageFile(file);
-      if (imagePreview && imagePreview.startsWith('blob:')) {
-        URL.revokeObjectURL(imagePreview);
-      }
-      setImagePreview(URL.createObjectURL(file)); 
-    }
+  const handleDesktopFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setDesktopImageFile(file);
+    setDesktopImagePreview(URL.createObjectURL(file));
   };
 
-  // --- 4. API Actions ---
+  const handleMobileFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setMobileImageFile(file);
+    setMobileImagePreview(URL.createObjectURL(file));
+    setRemoveMobileImage(false);
+  };
+
+  const clearMobileImage = () => {
+    setMobileImageFile(null);
+    setMobileImagePreview('');
+    setRemoveMobileImage(true);
+  };
+
   const saveBanner = async () => {
     if (!formData.title || !formData.display_order) {
       alert('Please fill in Title and Display Order.');
       return;
     }
-    if (!editingBanner && !imageFile && !imagePreview) {
-      alert('Please select an image for the new banner.');
+
+    if (!editingBanner && !desktopImageFile) {
+      alert('Please select a Desktop Banner Image.');
       return;
     }
 
@@ -164,35 +194,48 @@ const BannerManagement = () => {
     dataToSend.append('subtitle', formData.subtitle || '');
     dataToSend.append('link_url', formData.link_url || '');
     dataToSend.append('banner_type', formData.banner_type);
-    dataToSend.append('display_order', formData.display_order);
-    dataToSend.append('is_active', formData.is_active ? 1 : 0);
+    dataToSend.append('display_order', String(formData.display_order));
+    dataToSend.append('is_active', formData.is_active ? '1' : '0');
 
-    if (imageFile) {
-      dataToSend.append('image', imageFile);
+    if (desktopImageFile) {
+      dataToSend.append('desktop_image', desktopImageFile);
+    }
+
+    if (mobileImageFile) {
+      dataToSend.append('mobile_image', mobileImageFile);
+    }
+
+    if (removeMobileImage) {
+      dataToSend.append('remove_mobile_image', '1');
     }
 
     try {
+      setSaving(true);
       if (editingBanner) {
         await bannerService.updateBanner(editingBanner.id, dataToSend);
       } else {
         await bannerService.createBanner(dataToSend);
       }
-      fetchBanners();
+      await fetchBanners();
       closeDrawer();
     } catch (error) {
-      alert('Error saving banner');
+      const message = error?.response?.data?.message || 'Error saving banner';
+      alert(message);
       console.error(error);
+    } finally {
+      setSaving(false);
     }
   };
 
   const deleteBanner = async (bannerId) => {
-    if (window.confirm('Are you sure you want to delete this banner permanently?')) {
-      try {
-        await bannerService.deleteBanner(bannerId);
-        fetchBanners();
-      } catch (error) {
-        alert('Error deleting banner');
-      }
+    if (!window.confirm('Are you sure you want to delete this banner permanently?')) return;
+
+    try {
+      await bannerService.deleteBanner(bannerId);
+      await fetchBanners();
+    } catch (error) {
+      alert('Error deleting banner');
+      console.error(error);
     }
   };
 
@@ -200,14 +243,13 @@ const BannerManagement = () => {
     try {
       const isActiveNow = banner.is_active === 1 || banner.is_active === true;
       const dataToSend = new FormData();
-      dataToSend.append('is_active', isActiveNow ? 0 : 1);
-      
-      dataToSend.append('display_order', banner.display_order);
+      dataToSend.append('is_active', isActiveNow ? '0' : '1');
+      dataToSend.append('display_order', String(banner.display_order));
       dataToSend.append('title', banner.title);
       dataToSend.append('banner_type', banner.banner_type);
 
       await bannerService.updateBanner(banner.id, dataToSend);
-      fetchBanners();
+      await fetchBanners();
     } catch (error) {
       console.error(error);
     }
@@ -215,8 +257,7 @@ const BannerManagement = () => {
 
   const reorderBanner = async (bannerId, direction) => {
     const sortedBanners = [...banners].sort((a, b) => a.display_order - b.display_order);
-    const bannerIndex = sortedBanners.findIndex(b => b.id === bannerId);
-    
+    const bannerIndex = sortedBanners.findIndex((b) => b.id === bannerId);
     if (bannerIndex < 0) return;
 
     const targetIndex = direction === 'up' ? bannerIndex - 1 : bannerIndex + 1;
@@ -226,21 +267,21 @@ const BannerManagement = () => {
     const targetBanner = sortedBanners[targetIndex];
 
     const currentData = new FormData();
-    currentData.append('display_order', targetBanner.display_order);
+    currentData.append('display_order', String(targetBanner.display_order));
     currentData.append('title', currentBanner.title);
     currentData.append('banner_type', currentBanner.banner_type);
 
     const targetData = new FormData();
-    targetData.append('display_order', currentBanner.display_order);
+    targetData.append('display_order', String(currentBanner.display_order));
     targetData.append('title', targetBanner.title);
     targetData.append('banner_type', targetBanner.banner_type);
 
     try {
       await Promise.all([
         bannerService.updateBanner(currentBanner.id, currentData),
-        bannerService.updateBanner(targetBanner.id, targetData)
+        bannerService.updateBanner(targetBanner.id, targetData),
       ]);
-      fetchBanners();
+      await fetchBanners();
     } catch (error) {
       console.error('Error reordering banners', error);
     }
@@ -251,14 +292,13 @@ const BannerManagement = () => {
       <div className="banner-header">
         <div className="header-title">
           <h1>Advertisement & Banners</h1>
-          <p>Manage promotional creatives and scheduled displays</p>
+          <p>Manage responsive desktop and mobile banner creatives</p>
         </div>
         <button className="btn-primary" onClick={openAddDrawer}>
           <FiPlus size={16} /> Add New Banner
         </button>
       </div>
 
-      {/* FILTER BAR */}
       <div className="filters-bar">
         <div className="search-wrapper flex-grow">
           <FiSearch className="search-icon" />
@@ -275,7 +315,7 @@ const BannerManagement = () => {
           <FiFilter className="filter-icon" />
           <select value={filterType} onChange={(e) => setFilterType(e.target.value)} className="filter-select">
             <option value="All">All Types</option>
-            {bannerTypes.map(type => <option key={type} value={type}>{type}</option>)}
+            {bannerTypes.map((type) => <option key={type} value={type}>{type}</option>)}
           </select>
         </div>
 
@@ -298,10 +338,9 @@ const BannerManagement = () => {
         </div>
       </div>
 
-      {/* Banners Grid */}
       <div className="banners-grid">
         {paginatedBanners.length > 0 ? (
-          paginatedBanners.map(banner => (
+          paginatedBanners.map((banner) => (
             <div key={banner.id} className="banner-card">
               <div className="banner-image">
                 {banner.image_url ? (
@@ -311,13 +350,21 @@ const BannerManagement = () => {
                     <FiImage size={40} color="#cbd5e1" />
                   </div>
                 )}
-                
+
+                <div className="responsive-image-status">
+                  <span title="Desktop image available"><FiMonitor size={13} /> Desktop</span>
+                  <span className={banner.mobile_image_url ? 'available' : 'fallback'} title={banner.mobile_image_url ? 'Mobile image available' : 'Mobile will use desktop image'}>
+                    <FiSmartphone size={13} /> {banner.mobile_image_url ? 'Mobile' : 'Desktop fallback'}
+                  </span>
+                </div>
+
                 <div className="banner-overlay">
                   <div className="order-controls">
                     <button onClick={() => reorderBanner(banner.id, 'up')} className="order-btn" title="Move Up">↑</button>
                     <span className="order-number">{banner.display_order}</span>
                     <button onClick={() => reorderBanner(banner.id, 'down')} className="order-btn" title="Move Down">↓</button>
                   </div>
+
                   <div className="action-buttons">
                     <button className="action-btn edit-btn" onClick={() => openEditDrawer(banner)} title="Edit">
                       <FiEdit2 size={16} />
@@ -325,9 +372,9 @@ const BannerManagement = () => {
                     <button className="action-btn delete-btn" onClick={() => deleteBanner(banner.id)} title="Delete">
                       <FiTrash2 size={16} />
                     </button>
-                    <button 
-                      className={`action-btn toggle-btn ${(banner.is_active === 1 || banner.is_active === true) ? 'active' : 'inactive'}`} 
-                      onClick={() => toggleActive(banner)} 
+                    <button
+                      className={`action-btn toggle-btn ${(banner.is_active === 1 || banner.is_active === true) ? 'active' : 'inactive'}`}
+                      onClick={() => toggleActive(banner)}
                       title={(banner.is_active === 1 || banner.is_active === true) ? 'Deactivate' : 'Activate'}
                     >
                       {(banner.is_active === 1 || banner.is_active === true) ? <FiEye size={16} /> : <FiEyeOff size={16} />}
@@ -335,6 +382,7 @@ const BannerManagement = () => {
                   </div>
                 </div>
               </div>
+
               <div className="banner-details">
                 <div className="banner-title">{banner.title}</div>
                 <div className="banner-subtitle">{banner.subtitle || 'No subtitle provided'}</div>
@@ -352,71 +400,140 @@ const BannerManagement = () => {
         )}
       </div>
 
-      {/* Pagination */}
       {totalPages > 1 && (
         <div className="pagination">
-          <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="page-btn">
+          <button onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="page-btn">
             <FiChevronLeft size={16} /> Prev
           </button>
           <span className="page-info">Page {currentPage} of {totalPages}</span>
-          <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="page-btn">
+          <button onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="page-btn">
             Next <FiChevronRight size={16} />
           </button>
         </div>
       )}
 
-      {/* Strict Isolated Drawer (Prevents Global CSS Conflicts) */}
       {isDrawerOpen && (
         <div className="banner-drawer-overlay" onClick={closeDrawer}>
-          <div className={`banner-drawer-content ${isDrawerOpen ? 'slide-in' : ''}`} onClick={(e) => e.stopPropagation()}>
+          <div className="banner-drawer-content" onClick={(e) => e.stopPropagation()}>
             <div className="banner-drawer-header">
               <h2>{editingBanner ? 'Edit Banner Settings' : 'Upload New Banner'}</h2>
               <button className="banner-close-btn" onClick={closeDrawer}>
                 <FiX size={24} />
               </button>
             </div>
-            
+
             <div className="banner-drawer-body">
               <div className="banner-drawer-section">
                 <div className="form-group">
                   <label>Title *</label>
-                  <input type="text" name="title" value={formData.title} onChange={handleInputChange} placeholder="E.g., Summer Sale Hero" className="form-input" />
-                </div>
-                
-                <div className="form-group">
-                  <label>Subtitle / Description</label>
-                  <input type="text" name="subtitle" value={formData.subtitle} onChange={handleInputChange} placeholder="Optional secondary text" className="form-input" />
+                  <input
+                    type="text"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    placeholder="E.g., Laptop Hero"
+                    className="form-input"
+                  />
                 </div>
 
                 <div className="form-group">
-                  <label>Banner Image Asset *</label>
-                  <input type="file" accept="image/*" onChange={handleFileChange} className="form-input" style={{ padding: '8px' }} />
+                  <label>Subtitle / Description</label>
+                  <input
+                    type="text"
+                    name="subtitle"
+                    value={formData.subtitle}
+                    onChange={handleInputChange}
+                    placeholder="Optional secondary text"
+                    className="form-input"
+                  />
                 </div>
-                
-                {imagePreview && (
-                  <div className="image-preview">
-                    <img src={imagePreview} alt="Creative Preview" />
+
+                <div className="responsive-upload-grid">
+                  <div className="responsive-upload-card desktop-upload-card">
+                    <div className="upload-card-heading">
+                      <span className="upload-device-icon"><FiMonitor /></span>
+                      <div>
+                        <strong>Desktop Banner *</strong>
+                        <small>Recommended: 1920 × 650 px • WebP</small>
+                      </div>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleDesktopFileChange}
+                      className="form-input"
+                    />
+                    {desktopImagePreview && (
+                      <div className="image-preview desktop-preview">
+                        <img src={desktopImagePreview} alt="Desktop banner preview" />
+                      </div>
+                    )}
                   </div>
-                )}
+
+                  <div className="responsive-upload-card mobile-upload-card">
+                    <div className="upload-card-heading">
+                      <span className="upload-device-icon"><FiSmartphone /></span>
+                      <div>
+                        <strong>Mobile Banner</strong>
+                        <small>Recommended: 900 × 650 px • WebP</small>
+                      </div>
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleMobileFileChange}
+                      className="form-input"
+                    />
+                    {mobileImagePreview ? (
+                      <>
+                        <div className="image-preview mobile-preview">
+                          <img src={mobileImagePreview} alt="Mobile banner preview" />
+                        </div>
+                        <button type="button" className="remove-mobile-btn" onClick={clearMobileImage}>
+                          Remove mobile image
+                        </button>
+                      </>
+                    ) : (
+                      <div className="mobile-fallback-note">
+                        <FiSmartphone /> No mobile creative selected. Phones will automatically use the desktop image.
+                      </div>
+                    )}
+                  </div>
+                </div>
 
                 <div className="form-row">
                   <div className="form-group">
                     <label>Placement Type</label>
                     <select name="banner_type" value={formData.banner_type} onChange={handleInputChange} className="form-select">
-                      {bannerTypes.map(type => (
+                      {bannerTypes.map((type) => (
                         <option key={type} value={type}>{type}</option>
                       ))}
                     </select>
                   </div>
+
                   <div className="form-group">
                     <label>Sort / Display Order *</label>
-                    <input type="number" name="display_order" value={formData.display_order} onChange={handleInputChange} className="form-input" />
+                    <input
+                      type="number"
+                      min="1"
+                      name="display_order"
+                      value={formData.display_order}
+                      onChange={handleInputChange}
+                      className="form-input"
+                    />
                   </div>
                 </div>
 
                 <div className="form-group">
                   <label>Target URL (On Click)</label>
-                  <input type="text" name="link_url" value={formData.link_url} onChange={handleInputChange} placeholder="https://..." className="form-input" />
+                  <input
+                    type="text"
+                    name="link_url"
+                    value={formData.link_url}
+                    onChange={handleInputChange}
+                    placeholder="/category/laptops or https://..."
+                    className="form-input"
+                  />
                 </div>
 
                 <div className="form-group mt-3">
@@ -427,10 +544,12 @@ const BannerManagement = () => {
                 </div>
               </div>
             </div>
-            
+
             <div className="banner-drawer-footer">
-              <button className="btn-secondary" onClick={closeDrawer}>Cancel</button>
-              <button className="btn-primary" onClick={saveBanner}>Save Configuration</button>
+              <button className="btn-secondary" onClick={closeDrawer} disabled={saving}>Cancel</button>
+              <button className="btn-primary" onClick={saveBanner} disabled={saving}>
+                {saving ? 'Saving...' : 'Save Configuration'}
+              </button>
             </div>
           </div>
         </div>
