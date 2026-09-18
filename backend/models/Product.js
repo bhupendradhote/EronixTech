@@ -17,7 +17,7 @@ class Product {
         }
 
         const query = `INSERT INTO products (${fields.join(', ')}) VALUES (${placeholders.join(', ')})`;
-        
+
         const [result] = await db.execute(query, values);
         return result.insertId;
     }
@@ -47,20 +47,24 @@ class Product {
         query += ' ORDER BY created_at DESC';
 
         // --- Pagination Logic ---
-        const limit = filters.limit ? parseInt(filters.limit, 10) : 12; // Default limit 12
+        const MAX_LIMIT = 5000; // allow admin to pull the full catalog
+        let limit = filters.limit ? parseInt(filters.limit, 10) : 12; // Default limit 12
         const page = filters.page ? parseInt(filters.page, 10) : 1;
-        const offset = (page - 1) * limit;
 
-        query += ' LIMIT ? OFFSET ?';
-        
-        // Execute the count query with the original values (before adding limit/offset)
+        if (!Number.isFinite(limit) || limit <= 0) limit = 12;
+        if (limit > MAX_LIMIT) limit = MAX_LIMIT;
+
+        let offset = (page - 1) * limit;
+        if (!Number.isFinite(offset) || offset < 0) offset = 0;
+
+        // Inline sanitized integers — mysql2 prepared statements can fail on "LIMIT ? OFFSET ?"
+        query += ` LIMIT ${limit} OFFSET ${offset}`;
+
         const [countResult] = await db.execute(countQuery, values);
         const totalItems = countResult[0].total;
 
-        // Push limit and offset for the main data query (Must be integers for MySQL execute)
-        values.push(limit, offset);
         const [rows] = await db.execute(query, values);
-        
+
         return {
             data: rows,
             total: totalItems
@@ -92,7 +96,7 @@ class Product {
 
         values.push(id);
         const query = `UPDATE products SET ${fields.join(', ')} WHERE id = ?`;
-        
+
         const [result] = await db.execute(query, values);
         return result.affectedRows;
     }
@@ -100,7 +104,7 @@ class Product {
     // 5. Soft Delete a product (Sets deleted_at timestamp instead of permanently removing)
     static async delete(id) {
         const [result] = await db.execute(
-            'UPDATE products SET deleted_at = CURRENT_TIMESTAMP, status = "archived" WHERE id = ?', 
+            'UPDATE products SET deleted_at = CURRENT_TIMESTAMP, status = "archived" WHERE id = ?',
             [id]
         );
         return result.affectedRows;

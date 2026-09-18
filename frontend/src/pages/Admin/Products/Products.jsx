@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { FiSearch, FiFilter, FiPlus, FiEdit2, FiTrash2, FiChevronLeft, FiChevronRight, FiStar, FiUploadCloud, FiDownload } from 'react-icons/fi';
 import productService from '../../../services/productService';
 import brandService from '../../../services/brandService';
@@ -7,17 +7,54 @@ import ProductForm from './ProductForm';
 import { getImageUrl } from '../../../utils/imageUrl';
 import './Products.css';
 
+// ---------- helpers ----------
+
+const extractArray = (res) => {
+  if (!res) return [];
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res.data)) return res.data;
+  if (Array.isArray(res.products)) return res.products;
+  if (Array.isArray(res.items)) return res.items;
+  if (res.data && Array.isArray(res.data.data)) return res.data.data;
+  if (res.data && Array.isArray(res.data.products)) return res.data.products;
+  if (res.data && Array.isArray(res.data.items)) return res.data.items;
+  if (res.result && Array.isArray(res.result)) return res.result;
+  return [];
+};
+
+const extractTotal = (res) => {
+  if (!res) return null;
+  const t =
+    res.total ??
+    res.data?.total ??
+    res.pagination?.total ??
+    res.data?.pagination?.total ??
+    null;
+  return typeof t === 'number' ? t : null;
+};
+
+// ---------- module-level cache (survives component remounts) ----------
+
+let productsCache = null;
+let productsCacheTime = 0;
+const PRODUCTS_CACHE_TTL = 60 * 1000; // 1 minute
+
+let brandsCache = null;
+let categoriesCache = null;
+
+// ---------- component ----------
+
 const Products = () => {
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isImporting, setIsImporting] = useState(false);
-  
+
   const [brands, setBrands] = useState([]);
   const [categories, setCategories] = useState([]);
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  
+
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [categoryFilter, setCategoryFilter] = useState('All');
@@ -26,81 +63,138 @@ const Products = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  // Fetch all products (using a high limit to get everything)
-  const fetchProducts = async () => {
+  // ---------- data fetching ----------
+
+  const fetchProducts = useCallback(async (force = false) => {
+    const now = Date.now();
+
+    // Use cache if fresh and not forcing refresh
+    if (!force && productsCache && now - productsCacheTime < PRODUCTS_CACHE_TTL) {
+      setProducts(productsCache);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // Request a large number so all products are returned at once.
-      // For 584 products, limit=1000 is safe.
-      const response = await productService.getAllProducts({ limit: 1000, page: 1 });
-      setProducts(response.data || []);
+      const limit = 100;
+
+      // First request: gets page 1 + total
+      const firstRes = await productService.getAllProducts({ limit, page: 1 });
+      const firstBatch = extractArray(firstRes);
+      const total = extractTotal(firstRes);
+
+      let all = [...firstBatch];
+
+      if (total && firstBatch.length === limit) {
+        // Parallel fetch all remaining pages
+        const totalPages = Math.ceil(total / limit);
+        const requests = [];
+        for (let p = 2; p <= totalPages; p += 1) {
+          requests.push(productService.getAllProducts({ limit, page: p }));
+        }
+
+        const results = await Promise.all(requests);
+        results.forEach((res) => {
+          all = all.concat(extractArray(res));
+        });
+      } else if (firstBatch.length === limit) {
+        // Fallback: sequential paging if server doesn't report total
+        let page = 2;
+        let safety = 0;
+        while (safety < 100) {
+          const res = await productService.getAllProducts({ limit, page });
+          const batch = extractArray(res);
+          if (!batch.length) break;
+          all = all.concat(batch);
+          if (batch.length < limit) break;
+          page += 1;
+          safety += 1;
+        }
+      }
+
+      console.log(`Loaded ${all.length} products (reported total: ${total})`);
+
+      productsCache = all;
+      productsCacheTime = Date.now();
+      setProducts(all);
     } catch (error) {
-      console.error("Error fetching products:", error);
+      console.error('Error fetching products:', error);
       setProducts([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchDependencies = async () => {
-    try {
-      const [brandsData, categoriesData] = await Promise.all([
-        brandService.getAllBrands(),
-        categoryService.getAllCategories()
-      ]);
-      setBrands(brandsData || []);
-      setCategories(categoriesData || []);
-    } catch (error) {
-      console.error("Error fetching brands or categories:", error);
+  const fetchDependencies = useCallback(async () => {
+    // Cache brands & categories for the session
+    if (brandsCache && categoriesCache) {
+      setBrands(brandsCache);
+      setCategories(categoriesCache);
+      return;
     }
-  };
+
+    try {
+      const [brandsRes, categoriesRes] = await Promise.all([
+        brandService.getAllBrands(),
+        categoryService.getAllCategories(),
+      ]);
+
+      const brandsList = extractArray(brandsRes);
+      const categoriesList = extractArray(categoriesRes);
+
+      brandsCache = brandsList;
+      categoriesCache = categoriesList;
+
+      setBrands(brandsList);
+      setCategories(categoriesList);
+    } catch (error) {
+      console.error('Error fetching brands or categories:', error);
+      setBrands([]);
+      setCategories([]);
+    }
+  }, []);
 
   useEffect(() => {
     fetchDependencies();
     fetchProducts();
-  }, []);
+  }, [fetchDependencies, fetchProducts]);
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchTerm, statusFilter, categoryFilter, brandFilter, typeFilter]);
 
-  const getBrandName = (product) => {
-    if (product.brand?.name) return product.brand.name; 
+  // ---------- lookup helpers ----------
+
+  const brandMap = useMemo(() => {
+    const map = new Map();
+    brands.forEach((b) => map.set(String(b.id), b.name));
+    return map;
+  }, [brands]);
+
+  const categoryMap = useMemo(() => {
+    const map = new Map();
+    categories.forEach((c) => map.set(String(c.id), c.name));
+    return map;
+  }, [categories]);
+
+  const getBrandName = useCallback((product) => {
+    if (product.brand?.name) return product.brand.name;
     if (product.brand_name) return product.brand_name;
     if (product.brand_id) {
-      const foundBrand = brands.find(b => b.id === product.brand_id);
-      return foundBrand ? foundBrand.name : `ID: ${product.brand_id}`;
+      return brandMap.get(String(product.brand_id)) || `ID: ${product.brand_id}`;
     }
     return '—';
-  };
+  }, [brandMap]);
 
-  const getCategoryName = (product) => {
-    if (product.category?.name) return product.category.name; 
+  const getCategoryName = useCallback((product) => {
+    if (product.category?.name) return product.category.name;
     if (product.category_name) return product.category_name;
     if (product.category_id) {
-      const foundCategory = categories.find(c => c.id === product.category_id);
-      return foundCategory ? foundCategory.name : `ID: ${product.category_id}`;
+      return categoryMap.get(String(product.category_id)) || `ID: ${product.category_id}`;
     }
     return '—';
-  };
-
-  const getStockStatusBadgeClass = (stockStatus) => {
-    switch (stockStatus) {
-      case 'in_stock': return 'stock-badge stock-in';
-      case 'out_of_stock': return 'stock-badge stock-out';
-      case 'pre_order': return 'stock-badge stock-preorder';
-      default: return 'stock-badge';
-    }
-  };
-
-  const getStockStatusLabel = (stockStatus) => {
-    switch (stockStatus) {
-      case 'in_stock': return 'In Stock';
-      case 'out_of_stock': return 'Out of Stock';
-      case 'pre_order': return 'Pre-Order';
-      default: return stockStatus || '—';
-    }
-  };
+  }, [categoryMap]);
 
   const getProductTypeLabel = (type) => {
     if (!type) return 'Normal';
@@ -118,22 +212,48 @@ const Products = () => {
     return 'type-badge type-normal';
   };
 
-  // Client-side filtering (now works on the full dataset)
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          (product.sku && product.sku.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                          (product.product_code && product.product_code.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesStatus = statusFilter === 'All' || product.status === statusFilter.toLowerCase();
-    const matchesCategory = categoryFilter === 'All' || product.category_id?.toString() === categoryFilter;
-    const matchesBrand = brandFilter === 'All' || product.brand_id?.toString() === brandFilter;
-    const matchesType = typeFilter === 'All' || product.product_type === typeFilter;
+  // ---------- filtering (memoized for performance) ----------
 
-    return matchesSearch && matchesStatus && matchesCategory && matchesBrand && matchesType;
-  });
+  const filteredProducts = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+
+    return products.filter((product) => {
+      const matchesSearch =
+        !term ||
+        (product.name || '').toLowerCase().includes(term) ||
+        (product.sku || '').toLowerCase().includes(term) ||
+        (product.product_code || '').toLowerCase().includes(term);
+
+      const matchesStatus =
+        statusFilter === 'All' ||
+        String(product.status || '').toLowerCase() === statusFilter.toLowerCase();
+
+      const matchesCategory =
+        categoryFilter === 'All' ||
+        String(product.category_id) === String(categoryFilter);
+
+      const matchesBrand =
+        brandFilter === 'All' ||
+        String(product.brand_id) === String(brandFilter);
+
+      const matchesType =
+        typeFilter === 'All' ||
+        product.product_type === typeFilter;
+
+      return matchesSearch && matchesStatus && matchesCategory && matchesBrand && matchesType;
+    });
+  }, [products, searchTerm, statusFilter, categoryFilter, brandFilter, typeFilter]);
 
   const totalPages = Math.ceil(filteredProducts.length / itemsPerPage);
-  const paginatedProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const paginatedProducts = useMemo(() => {
+    return filteredProducts.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+  }, [filteredProducts, currentPage, itemsPerPage]);
+
+  // ---------- actions ----------
 
   const handleAddNew = () => {
     setEditingProduct(null);
@@ -149,9 +269,12 @@ const Products = () => {
     if (window.confirm('Are you sure you want to archive/delete this product?')) {
       try {
         await productService.deleteProduct(id);
-        fetchProducts();
+        // Invalidate cache and refetch
+        productsCache = null;
+        productsCacheTime = 0;
+        fetchProducts(true);
       } catch (error) {
-        console.error("Failed to delete", error);
+        console.error('Failed to delete', error);
       }
     }
   };
@@ -162,13 +285,22 @@ const Products = () => {
       const formData = new FormData();
       formData.append('status', newStatus);
       await productService.updateProduct(product.id, formData);
-      fetchProducts();
+      productsCache = null;
+      productsCacheTime = 0;
+      fetchProducts(true);
     } catch (error) {
-      console.error("Failed to toggle status", error);
+      console.error('Failed to toggle status', error);
     }
   };
 
-  // Excel Import / Export (unchanged)
+  const handleSaveSuccess = () => {
+    productsCache = null;
+    productsCacheTime = 0;
+    fetchProducts(true);
+  };
+
+  // ---------- import / export ----------
+
   const handleDownloadTemplate = () => {
     const headers = [
       'Product Name', 'SKU', 'Product Code', 'UPC', 'EAN', 'GTIN', 'MPN',
@@ -176,19 +308,19 @@ const Products = () => {
       'Child Category ID', 'Short Description', 'Cost Price', 'MRP',
       'Selling Price', 'Offer Price', 'Tax Percentage', 'Stock Quantity',
       'Minimum Stock Alert', 'Weight', 'Height', 'Width', 'Depth', 'Color',
-      'Condition'
+      'Condition',
     ];
-    
+
     const sampleRow = [
       'Sample Smartphone', 'MOB-123', 'PROD-001', '', '', '', '', 'SM-G998B',
       '1', '2', '', '', 'A great 6.5-inch smartphone', '10000', '15000',
       '12999', '', '18', '50', '5', '0.2', '15.5', '7.5', '0.8',
-      'Midnight Blue', 'New'
+      'Midnight Blue', 'New',
     ];
-    
+
     const csvContent = [
       headers.join(','),
-      sampleRow.map(item => `"${item}"`).join(',')
+      sampleRow.map((item) => `"${item}"`).join(','),
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -206,7 +338,7 @@ const Products = () => {
     if (!file) return;
 
     if (!file.name.match(/\.(xlsx|xls|csv)$/)) {
-      alert("Please upload a valid Excel or CSV file.");
+      alert('Please upload a valid Excel or CSV file.');
       e.target.value = null;
       return;
     }
@@ -214,23 +346,27 @@ const Products = () => {
     setIsImporting(true);
     try {
       const result = await productService.importProducts(file);
-      
+
       let msg = result.message;
       if (result.errors && result.errors.length > 0) {
         msg += `\n\nErrors:\n${result.errors.slice(0, 5).join('\n')}`;
         if (result.errors.length > 5) msg += `\n...and ${result.errors.length - 5} more.`;
       }
       alert(msg);
-      
-      fetchProducts();
+
+      productsCache = null;
+      productsCacheTime = 0;
+      fetchProducts(true);
     } catch (error) {
-      console.error("Import failed:", error);
-      alert(error.response?.data?.message || "Failed to import products.");
+      console.error('Import failed:', error);
+      alert(error.response?.data?.message || 'Failed to import products.');
     } finally {
       setIsImporting(false);
-      e.target.value = null; 
+      e.target.value = null;
     }
   };
+
+  // ---------- render ----------
 
   return (
     <div className="products-page">
@@ -239,31 +375,31 @@ const Products = () => {
           <h1>Products Management</h1>
           <p>Manage your product inventory, prices, and availability</p>
         </div>
-        
+
         <div className="header-actions" style={{ display: 'flex', gap: '10px' }}>
-          <button 
-            className="btn-secondary" 
+          <button
+            className="btn-secondary"
             onClick={handleDownloadTemplate}
             style={{ padding: '10px 16px', borderRadius: '4px', border: '1px solid #ccc', display: 'flex', alignItems: 'center', gap: '8px', background: '#fff', cursor: 'pointer' }}
           >
-            <FiDownload size={16} /> 
+            <FiDownload size={16} />
             Download Template
           </button>
 
-          <input 
-            type="file" 
-            id="excel-upload" 
+          <input
+            type="file"
+            id="excel-upload"
             accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
             style={{ display: 'none' }}
             onChange={handleFileUpload}
           />
-          
-          <label 
-            htmlFor="excel-upload" 
-            className="btn-secondary" 
+
+          <label
+            htmlFor="excel-upload"
+            className="btn-secondary"
             style={{ cursor: isImporting ? 'wait' : 'pointer', padding: '10px 16px', borderRadius: '4px', border: '1px solid #ccc', display: 'flex', alignItems: 'center', gap: '8px', opacity: isImporting ? 0.7 : 1, background: '#fff' }}
           >
-            <FiUploadCloud size={16} /> 
+            <FiUploadCloud size={16} />
             {isImporting ? 'Importing...' : 'Import Products'}
           </label>
 
@@ -275,74 +411,31 @@ const Products = () => {
 
       {/* Product Type Tabs */}
       <div className="product-type-tabs" style={{ display: 'flex', gap: '6px', marginBottom: '16px', borderBottom: '1px solid #e0e0e0', paddingBottom: '8px' }}>
-        <button
-          className={`type-tab ${typeFilter === 'All' ? 'active' : ''}`}
-          onClick={() => setTypeFilter('All')}
-          style={{
-            padding: '8px 18px',
-            border: 'none',
-            background: typeFilter === 'All' ? '#2a7de1' : 'transparent',
-            color: typeFilter === 'All' ? '#fff' : '#555',
-            borderRadius: '20px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            transition: '0.2s'
-          }}
-        >
-          All
-        </button>
-        <button
-          className={`type-tab ${typeFilter === 'normal' ? 'active' : ''}`}
-          onClick={() => setTypeFilter('normal')}
-          style={{
-            padding: '8px 18px',
-            border: 'none',
-            background: typeFilter === 'normal' ? '#2a7de1' : 'transparent',
-            color: typeFilter === 'normal' ? '#fff' : '#555',
-            borderRadius: '20px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            transition: '0.2s'
-          }}
-        >
-          Normal
-        </button>
-        <button
-          className={`type-tab ${typeFilter === 'pc_build' ? 'active' : ''}`}
-          onClick={() => setTypeFilter('pc_build')}
-          style={{
-            padding: '8px 18px',
-            border: 'none',
-            background: typeFilter === 'pc_build' ? '#2a7de1' : 'transparent',
-            color: typeFilter === 'pc_build' ? '#fff' : '#555',
-            borderRadius: '20px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            transition: '0.2s'
-          }}
-        >
-          PC Build
-        </button>
-        <button
-          className={`type-tab ${typeFilter === 'pc_pre_build' ? 'active' : ''}`}
-          onClick={() => setTypeFilter('pc_pre_build')}
-          style={{
-            padding: '8px 18px',
-            border: 'none',
-            background: typeFilter === 'pc_pre_build' ? '#2a7de1' : 'transparent',
-            color: typeFilter === 'pc_pre_build' ? '#fff' : '#555',
-            borderRadius: '20px',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            transition: '0.2s'
-          }}
-        >
-          PC Pre‑Build
-        </button>
+        {[
+          { key: 'All', label: 'All' },
+          { key: 'normal', label: 'Normal' },
+          { key: 'pc_build', label: 'PC Build' },
+          { key: 'pc_pre_build', label: 'PC Pre‑Build' },
+        ].map(({ key, label }) => (
+          <button
+            key={key}
+            className={`type-tab ${typeFilter === key ? 'active' : ''}`}
+            onClick={() => setTypeFilter(key)}
+            style={{
+              padding: '8px 18px',
+              border: 'none',
+              background: typeFilter === key ? '#2a7de1' : 'transparent',
+              color: typeFilter === key ? '#fff' : '#555',
+              borderRadius: '20px',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: '0.2s',
+            }}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       <div className="filters-bar" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
@@ -356,20 +449,20 @@ const Products = () => {
             className="search-input"
           />
         </div>
-        
+
         <div className="filter-wrapper" style={{ display: 'flex', gap: '10px' }}>
           <FiFilter className="filter-icon" />
-          
+
           <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="filter-select">
             <option value="All">All Categories</option>
-            {categories.map(cat => (
+            {categories.map((cat) => (
               <option key={cat.id} value={cat.id}>{cat.name}</option>
             ))}
           </select>
 
           <select value={brandFilter} onChange={(e) => setBrandFilter(e.target.value)} className="filter-select">
             <option value="All">All Brands</option>
-            {brands.map(brand => (
+            {brands.map((brand) => (
               <option key={brand.id} value={brand.id}>{brand.name}</option>
             ))}
           </select>
@@ -402,7 +495,7 @@ const Products = () => {
             </thead>
             <tbody>
               {paginatedProducts.length > 0 ? (
-                paginatedProducts.map(product => {
+                paginatedProducts.map((product) => {
                   let parsedImages = [];
                   if (product.images) {
                     try {
@@ -411,7 +504,7 @@ const Products = () => {
                       parsedImages = [];
                     }
                   }
-                  
+
                   const firstImage = parsedImages.length > 0 ? parsedImages[0] : null;
                   const firstImagePath = typeof firstImage === 'string'
                     ? firstImage
@@ -428,6 +521,7 @@ const Products = () => {
                           src={primaryImage}
                           alt={product.name}
                           className="product-thumb"
+                          loading="lazy"
                           onError={(event) => {
                             event.currentTarget.onerror = null;
                             event.currentTarget.src = 'https://placehold.co/60x60?text=No+Image';
@@ -477,21 +571,21 @@ const Products = () => {
 
       {totalPages > 1 && (
         <div className="pagination">
-          <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="page-btn">
+          <button onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="page-btn">
             <FiChevronLeft size={16} /> Prev
           </button>
           <span className="page-info">Page {currentPage} of {totalPages}</span>
-          <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="page-btn">
+          <button onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="page-btn">
             Next <FiChevronRight size={16} />
           </button>
         </div>
       )}
 
-      <ProductForm 
-        isOpen={isDrawerOpen} 
-        onClose={() => setIsDrawerOpen(false)} 
+      <ProductForm
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
         product={editingProduct}
-        onSaveSuccess={fetchProducts}
+        onSaveSuccess={handleSaveSuccess}
       />
     </div>
   );

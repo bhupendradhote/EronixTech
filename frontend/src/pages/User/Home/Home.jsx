@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, memo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, memo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import './Home.css';
 
@@ -27,7 +27,75 @@ import buildPcPromo from '../../../assets/images/home/2.png';
 import businessSolutionsPromo from '../../../assets/images/home/3.png';
 import gearUpBg from '../../../assets/images/banner/erbann.jpeg';
 
-// ---------- SVG Icons ----------
+// =============================================================
+// Helpers
+// =============================================================
+
+const extractArray = (res) => {
+  if (!res) return [];
+  if (Array.isArray(res)) return res;
+  if (Array.isArray(res.data)) return res.data;
+  if (Array.isArray(res.products)) return res.products;
+  if (Array.isArray(res.items)) return res.items;
+  if (res.data && Array.isArray(res.data.data)) return res.data.data;
+  if (res.data && Array.isArray(res.data.products)) return res.data.products;
+  if (res.data && Array.isArray(res.data.items)) return res.data.items;
+  if (res.result && Array.isArray(res.result)) return res.result;
+  return [];
+};
+
+const extractTotal = (res) => {
+  if (!res) return null;
+  const t =
+    res.total ??
+    res.data?.total ??
+    res.pagination?.total ??
+    res.data?.pagination?.total ??
+    null;
+  return typeof t === 'number' ? t : null;
+};
+
+const safeSlug = (text, fallbackId) => {
+  if (text && typeof text === 'string' && text.trim()) {
+    return text.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+  return fallbackId != null ? String(fallbackId) : '';
+};
+
+// =============================================================
+// Persistent cache — survives refresh + back/forward navigation
+// =============================================================
+
+const CACHE_KEY = 'eronix_home_cache_v1';
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+const readCache = () => {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.timestamp) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
+const writeCache = (data) => {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+      timestamp: Date.now(),
+      data,
+    }));
+  } catch {
+    // sessionStorage full or disabled — ignore
+  }
+};
+
+// =============================================================
+// SVG Icons
+// =============================================================
+
 const HeartIcon = ({ filled }) => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
@@ -73,7 +141,10 @@ const LockIcon = () => (
   </svg>
 );
 
-// ---------- Toast Component ----------
+// =============================================================
+// Toast
+// =============================================================
+
 const Toast = ({ message, type, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
@@ -95,7 +166,38 @@ const Toast = ({ message, type, onClose }) => {
   );
 };
 
-// ---------- Product Card ----------
+// =============================================================
+// Skeleton Loader
+// =============================================================
+
+const HomeSkeleton = () => (
+  <Layout>
+    <div style={{ maxWidth: '1280px', margin: '0 auto', padding: '20px' }}>
+      <div style={{ width: '100%', height: '320px', background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite', borderRadius: '12px', marginBottom: '24px' }}></div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', gap: '12px', marginBottom: '32px' }}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} style={{ height: '120px', background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite', borderRadius: '10px' }}></div>
+        ))}
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} style={{ height: '360px', background: 'linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%)', backgroundSize: '200% 100%', animation: 'shimmer 1.5s infinite', borderRadius: '12px' }}></div>
+        ))}
+      </div>
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
+    </div>
+  </Layout>
+);
+
+// =============================================================
+// Product Card
+// =============================================================
+
 const ProductCard = memo(({
   product,
   wishlist,
@@ -155,6 +257,7 @@ const ProductCard = memo(({
             src={getProductImage(product)}
             alt={product.name}
             loading="lazy"
+            decoding="async"
             onError={(e) => { e.target.src = defaultImg; }}
           />
           <div className="ec-dots">
@@ -231,7 +334,10 @@ const ProductCard = memo(({
   );
 });
 
-// ---------- Category Section ----------
+// =============================================================
+// Category Section
+// =============================================================
+
 const CategorySection = memo(({
   category,
   products,
@@ -250,18 +356,25 @@ const CategorySection = memo(({
   defaultImg,
   gearUpBgImage
 }) => {
-  const subCategoryIds = (category.sub_categories || []).map(sub => Number(sub.id));
-  const categoryProducts = products.filter(p => {
-    const catId = Number(p.category_id);
-    const subCatId = Number(p.sub_category_id);
-    if (catId) {
-      return catId === Number(category.id);
-    }
-    return subCatId && subCategoryIds.includes(subCatId);
-  });
+  const subCategoryIds = useMemo(
+    () => (category.sub_categories || []).map(sub => Number(sub.id)),
+    [category.sub_categories]
+  );
+
+  const categoryProducts = useMemo(() => {
+    const catId = Number(category.id);
+    return products.filter(p => {
+      const pCatId = Number(p.category_id);
+      if (pCatId) return pCatId === catId;
+      const pSubId = Number(p.sub_category_id);
+      return pSubId && subCategoryIds.includes(pSubId);
+    }).slice(0, 8);
+  }, [products, category.id, subCategoryIds]);
 
   const subCats = category.sub_categories || [];
   const cardBackgrounds = ['#E6F2FE', '#EAE6FA', '#E2F4EA', '#FBEAE9', '#F9E6EF'];
+
+  const categorySlug = category.slug || generateSlug(category.name);
 
   return (
     <div className="electrical-section-wrapper" key={category.id}>
@@ -270,7 +383,7 @@ const CategorySection = memo(({
           <h2><span className="img-slash"></span> {category.name.toUpperCase()}</h2>
           <p className="img-subtitle">Enhance Your Setup. Work Better. Play Better.</p>
         </div>
-        <Link className="img-explore-btn" to={`/category/${category.slug}`}>
+        <Link className="img-explore-btn" to={`/category/${categorySlug}`}>
           Explore All {category.name} &rarr;
         </Link>
       </div>
@@ -336,17 +449,13 @@ const CategorySection = memo(({
             {subCats.length > 0 ? (
               subCats.slice(0, 5).map((sub, index) => {
                 const parentCategory = categories.find(c => c.id === sub.category_id) || category;
+                const parentSlug = parentCategory.slug || generateSlug(parentCategory.name);
                 return (
                   <div className="img-cat-card" key={sub.id} style={{ backgroundColor: cardBackgrounds[index % 5] }}>
-                    <img
-                      className="img-cat-bg"
-                      src={sub.icon_url || defaultImg}
-                      alt={sub.name}
-                      loading="lazy"
-                    />
+                    <img className="img-cat-bg" src={sub.icon_url || defaultImg} alt={sub.name} loading="lazy" />
                     <div className="img-cat-text">
                       <h4>{sub.name.toUpperCase()}</h4>
-                      <Link to={`/category/${parentCategory.slug}?sub=${sub.id}`} className="img-explore-link">
+                      <Link to={`/category/${parentSlug}?sub=${sub.id}`} className="img-explore-link">
                         <span className="img-arrow-circle">&rarr;</span> Explore Now
                       </Link>
                     </div>
@@ -376,7 +485,7 @@ const CategorySection = memo(({
             )}
             <div className="electrical-products" id={`grid-${category.id}`}>
               {categoryProducts.length > 0 ? (
-                categoryProducts.slice(0, 8).map(product => (
+                categoryProducts.map(product => (
                   <ProductCard
                     key={product.id}
                     product={product}
@@ -408,18 +517,28 @@ const CategorySection = memo(({
   );
 });
 
-// ---------- Main Home ----------
+// =============================================================
+// Main Home
+// =============================================================
+
 function Home() {
   const navigate = useNavigate();
   const { addToCompare } = useCompare();
+  const abortRef = useRef(null);
 
-  const [data, setData] = useState({
-    products: [],
-    categories: [],
-    brands: [],
-    banners: []
+  const [data, setData] = useState(() => {
+    const cached = readCache();
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.data;
+    }
+    return { products: [], categories: [], brands: [], banners: [] };
   });
-  const [loading, setLoading] = useState(true);
+
+  const [loading, setLoading] = useState(() => {
+    const cached = readCache();
+    return !(cached && Date.now() - cached.timestamp < CACHE_TTL);
+  });
+
   const [ratingStats, setRatingStats] = useState({});
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authType, setAuthType] = useState('login');
@@ -428,7 +547,6 @@ function Home() {
 
   const showToast = useCallback((message, type = 'success') => setToast({ message, type }), []);
 
-  // Helper to build absolute URLs and upgrade HTTP to HTTPS
   const getFullUrl = useCallback((url) => {
     if (!url) return url;
     if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -463,6 +581,7 @@ function Home() {
     text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
   , []);
 
+  // ---------- Wishlist ----------
   useEffect(() => {
     const fetchWishlist = async () => {
       const token = localStorage.getItem('token');
@@ -475,49 +594,135 @@ function Home() {
     fetchWishlist();
   }, [isAuthModalOpen]);
 
+  // ---------- Main data fetch (SWR pattern) ----------
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      const safeFetch = async (promise) => {
-        try { return await promise; } catch { return []; }
-      };
+    abortRef.current = new AbortController();
+    const { signal } = abortRef.current;
 
-      const [productsRes, categoriesRes, brandsRes, bannersRes] = await Promise.all([
-        safeFetch(productService.getAllProducts({ activeOnly: true, limit: 1000 })),
-        safeFetch(categoryService.getAllCategories(true, true)),
-        safeFetch(brandService.getAllBrands(true)),
-        safeFetch(bannerService.getAllBanners(true))
-      ]);
+    const PRODUCT_LIMIT = 100;
+    const MAX_PAGES = 2;
 
-      setData({
-        products: Array.isArray(productsRes) ? productsRes : (productsRes?.data || []),
-        categories: Array.isArray(categoriesRes) ? categoriesRes : (categoriesRes?.data || []),
-        brands: Array.isArray(brandsRes) ? brandsRes : (brandsRes?.data || []),
-        banners: Array.isArray(bannersRes) ? bannersRes : (bannersRes?.data || [])
+    const fetchProducts = async () => {
+      const results = await Promise.all(
+        Array.from({ length: MAX_PAGES }, (_, i) =>
+          productService
+            .getAllProducts({ activeOnly: true, limit: PRODUCT_LIMIT, page: i + 1 })
+            .catch((err) => {
+              if (err?.name !== 'CanceledError') {
+                console.error(`[Home] products page ${i + 1} failed:`, err?.message || err);
+              }
+              return [];
+            })
+        )
+      );
+
+      if (signal.aborted) return [];
+
+      let all = [];
+      for (const res of results) {
+        all = all.concat(extractArray(res));
+      }
+
+      const seen = new Set();
+      all = all.filter((p) => {
+        if (seen.has(p.id)) return false;
+        seen.add(p.id);
+        return true;
       });
-      setLoading(false);
-    };
-    fetchData();
-  }, []);
 
-  useEffect(() => {
-    if (data.products.length === 0) return;
-    let isMounted = true;
-    const fetchRatings = async () => {
-      for (const product of data.products) {
-        if (!isMounted) break;
-        try {
-          const stats = await reviewService.getReviewStats(product.id);
-          if (isMounted) {
-            setRatingStats(prev => ({ ...prev, [product.id]: stats }));
-          }
-        } catch {}
+      console.log(`[Home] Loaded ${all.length} products`);
+      return all;
+    };
+
+    const fetchData = async () => {
+      try {
+        const [productsList, categoriesRes, brandsRes, bannersRes] = await Promise.all([
+          fetchProducts(),
+          categoryService.getAllCategories(true, true).catch(() => []),
+          brandService.getAllBrands(true).catch(() => []),
+          bannerService.getAllBanners(true).catch(() => []),
+        ]);
+
+        if (signal.aborted) return;
+
+        const nextData = {
+          products: productsList,
+          categories: extractArray(categoriesRes),
+          brands: extractArray(brandsRes),
+          banners: extractArray(bannersRes),
+        };
+
+        console.log('[Home] Data ready:', {
+          products: nextData.products.length,
+          categories: nextData.categories.length,
+          brands: nextData.brands.length,
+          banners: nextData.banners.length,
+        });
+
+        writeCache(nextData);
+        setData(nextData);
+        setLoading(false);
+      } catch (err) {
+        if (err?.name !== 'CanceledError') {
+          console.error('[Home] fetchData failed:', err);
+        }
+        if (!signal.aborted) setLoading(false);
       }
     };
+
+    fetchData();
+
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  // ---------- Ratings (lazy, batched, cached) ----------
+  useEffect(() => {
+    if (data.products.length === 0) return;
+    if (Object.keys(ratingStats).length > 0) return;
+    let isMounted = true;
+
+    const fetchRatings = async () => {
+      const visibleIds = new Set();
+      data.products.forEach((p) => {
+        if (visibleIds.size < 200) visibleIds.add(p.id);
+      });
+      const ids = Array.from(visibleIds);
+
+      const batchSize = 30;
+      for (let i = 0; i < ids.length; i += batchSize) {
+        if (!isMounted) break;
+        const slice = ids.slice(i, i + batchSize);
+
+        const results = await Promise.all(
+          slice.map(async (id) => {
+            try {
+              const stats = await reviewService.getReviewStats(id);
+              return [id, stats];
+            } catch {
+              return [id, null];
+            }
+          })
+        );
+
+        if (!isMounted) break;
+
+        setRatingStats((prev) => {
+          const next = { ...prev };
+          results.forEach(([id, stats]) => {
+            if (stats) next[id] = stats;
+          });
+          return next;
+        });
+      }
+    };
+
     fetchRatings();
     return () => { isMounted = false; };
-  }, [data.products]);
+  }, [data.products, ratingStats]);
 
+  // ---------- Actions ----------
   const handleAddToCart = useCallback(async (e, product) => {
     e.preventDefault();
     e.stopPropagation();
@@ -599,9 +804,12 @@ function Home() {
     }
   }, []);
 
-  const activeProducts = useMemo(() => data.products.filter(p => p.status === 'active'), [data.products]);
+  // ---------- Derived data ----------
+  const activeProducts = useMemo(
+    () => data.products.filter(p => p.status === 'active'),
+    [data.products]
+  );
 
-  // Process banners: convert URLs to absolute HTTPS and prepare for HeroBanner
   const processedBanners = useMemo(() => {
     const process = (b) => ({
       ...b,
@@ -638,16 +846,8 @@ function Home() {
 
   const trustedBrandsLogos = ['intel.', 'AMD', 'NVIDIA', 'ASUS', 'MSI', 'GIGABYTE', 'CORSAIR', 'SAMSUNG', 'crucial', 'WD'];
 
-  if (loading) {
-    return (
-      <Layout>
-        <div style={{ minHeight: "60vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", background: '#F5F7FA' }}>
-          <div style={{ width: '40px', height: '40px', border: '4px solid #E8EDF5', borderTop: '4px solid #009DFF', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-          <p style={{ marginTop: '15px', color: '#666666', fontWeight: '500' }}>Loading...</p>
-        </div>
-      </Layout>
-    );
-  }
+  const showSkeleton = loading && data.products.length === 0 && data.categories.length === 0;
+  if (showSkeleton) return <HomeSkeleton />;
 
   return (
     <Layout>
@@ -695,8 +895,7 @@ function Home() {
         }
       `}</style>
 
-      <main className="eronix-main-container container" style={{ animation: 'fadeIn 0.5s ease-in-out' }}>
-        {/* Pass processed hero banners */}
+      <main className="eronix-main-container container" style={{ animation: 'fadeIn 0.4s ease-in-out' }}>
         <HeroBanner banners={processedBanners.hero} />
 
         <section className="home-quick-categories" aria-label="Shop by category">
@@ -704,15 +903,18 @@ function Home() {
             .slice()
             .sort((a, b) => (a.display_order || 0) - (b.display_order || 0))
             .slice(0, 8)
-            .map((category) => (
-              <Link className="home-quick-category-card" to={`/category/${category.slug}`} key={category.id}>
-                <div className="home-quick-category-image">
-                  <img src={category.icon_url || category.image_url || defaultImg} alt={category.name} loading="lazy" onError={(e) => { e.currentTarget.src = defaultImg; }} />
-                </div>
-                <span className="home-quick-category-title">{category.name}</span>
-                <span className="home-quick-category-link">Explore Now</span>
-              </Link>
-            ))}
+            .map((category) => {
+              const catSlug = safeSlug(category.slug, category.id);
+              return (
+                <Link className="home-quick-category-card" to={`/category/${catSlug}`} key={category.id}>
+                  <div className="home-quick-category-image">
+                    <img src={category.icon_url || category.image_url || defaultImg} alt={category.name} loading="lazy" onError={(e) => { e.currentTarget.src = defaultImg; }} />
+                  </div>
+                  <span className="home-quick-category-title">{category.name}</span>
+                  <span className="home-quick-category-link">Explore Now</span>
+                </Link>
+              );
+            })}
           <Link className="home-quick-category-card home-view-all-card" to="/search">
             <div className="home-view-all-icon" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
             <span className="home-quick-category-title">View All</span>
@@ -854,19 +1056,36 @@ function Home() {
           </div>
         </div>
 
+        {/* ============ POPULAR SEARCHES (FIXED) ============ */}
         <div className="popular-searches white-bg">
           <div className="popular-search-container">
             <p className="search-heading">Popular searches on EronixTech</p>
             <div className="pwa-row pad-lr-0">
               {data.categories.map(category => {
                 if (!category.sub_categories || category.sub_categories.length === 0) return null;
+
+                const catSlug = safeSlug(category.slug, category.id);
+                if (!catSlug) return null;
+
                 return (
                   <div className="popular-search-wraper" key={category.id}>
                     <span className="category-heading">{category.name.toUpperCase()}:</span>
                     <div className="sub-categories">
-                      {category.sub_categories.map(sub => (
-                        <span key={sub.id}><Link to={`/category/${category.slug}?sub=${sub.slug}`}>{sub.name}</Link></span>
-                      ))}
+                      {category.sub_categories.map(sub => {
+                        // Build link with stable fallbacks:
+                        // 1. Prefer `sub.id` as query param (matches CategorySection + backend filter)
+                        // 2. Prefer `category.slug` as path
+                        const subId = sub.id ?? sub.sub_category_id;
+                        if (subId == null) return null;
+
+                        const to = `/category/${catSlug}?sub=${subId}`;
+
+                        return (
+                          <span key={sub.id ?? sub.name}>
+                            <Link to={to}>{sub.name}</Link>
+                          </span>
+                        );
+                      })}
                     </div>
                   </div>
                 );

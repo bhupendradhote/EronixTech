@@ -1,5 +1,5 @@
 const Product = require('../models/Product');
-const xlsx = require('xlsx'); 
+const xlsx = require('xlsx');
 const fs = require('fs');
 
 const parseJSONFields = (product) => {
@@ -13,6 +13,18 @@ const parseJSONFields = (product) => {
             }
         }
     });
+    return product;
+};
+
+// For list responses: only parse `images`, drop heavy fields
+const HEAVY_FIELDS = ['description', 'specifications', 'key_features', 'offers', 'variants'];
+const trimForList = (product) => {
+    // Parse images only
+    if (product.images && typeof product.images === 'string') {
+        try { product.images = JSON.parse(product.images); } catch { product.images = []; }
+    }
+    // Remove heavy fields to shrink the response
+    HEAVY_FIELDS.forEach((f) => { delete product[f]; });
     return product;
 };
 
@@ -86,7 +98,7 @@ const productController = {
 
             const insertId = await Product.create(productData);
             let newProduct = await Product.findById(insertId);
-            
+
             newProduct = parseJSONFields(newProduct);
 
             res.status(201).json({ success: true, message: 'Product created successfully', data: newProduct });
@@ -99,7 +111,7 @@ const productController = {
         }
     },
 
-    // 2. Get all products (With Pagination)
+    // 2. Get all products (LIGHT payload — heavy JSON fields removed)
     getAllProducts: async (req, res) => {
         try {
             const limit = req.query.limit ? parseInt(req.query.limit, 10) : 12;
@@ -109,20 +121,22 @@ const productController = {
                 status: req.query.status,
                 category_id: req.query.category_id,
                 is_active: req.query.active === 'true',
-                limit: limit,
-                page: page
+                limit,
+                page
             };
 
             const result = await Product.findAll(filters);
-            const formattedProducts = result.data.map(product => parseJSONFields(product));
 
-            res.status(200).json({ 
-                success: true, 
+            // Trim each row: parse `images`, drop description/specs/etc.
+            const formattedProducts = result.data.map(trimForList);
+
+            res.status(200).json({
+                success: true,
                 data: formattedProducts,
                 pagination: {
                     total: result.total,
-                    page: page,
-                    limit: limit,
+                    page,
+                    limit,
                     totalPages: Math.ceil(result.total / limit)
                 }
             });
@@ -132,7 +146,7 @@ const productController = {
         }
     },
 
-    // 3. Get single product by ID
+    // 3. Get single product by ID (FULL row — for detail page)
     getProductById: async (req, res) => {
         try {
             const { id } = req.params;
@@ -152,7 +166,7 @@ const productController = {
         }
     },
 
-    // 3.5 Get single product by Slug
+    // 3.5 Get single product by Slug (FULL row — for detail page)
     getProductBySlug: async (req, res) => {
         try {
             const { slug } = req.params;
@@ -196,7 +210,7 @@ const productController = {
             if (updateData.existing_images) {
                 try {
                     finalMainImages = JSON.parse(updateData.existing_images);
-                } catch(e) {
+                } catch (e) {
                     finalMainImages = [];
                 }
                 delete updateData.existing_images;
@@ -286,7 +300,7 @@ const productController = {
 
         try {
             const workbook = xlsx.readFile(req.file.path);
-            const sheetName = workbook.SheetNames[0]; 
+            const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
             const rawData = xlsx.utils.sheet_to_json(sheet);
 
@@ -295,7 +309,7 @@ const productController = {
 
             for (let i = 0; i < rawData.length; i++) {
                 const row = rawData[i];
-                
+
                 try {
                     const name = row['Product Name'] || row['Name'];
                     if (!name) {
@@ -303,25 +317,19 @@ const productController = {
                         continue;
                     }
 
-                    // Auto-generate slug securely
                     let slug = row['Slug'];
                     if (!slug) {
                         const baseSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
-                        const randomString = Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(-2); 
+                        const randomString = Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(-2);
                         slug = `${baseSlug}-${randomString}`;
                     }
 
-                    // CRITICAL FIX: Convert empty strings to true NULL to prevent Duplicate Entry errors on UNIQUE columns
                     const safeValue = (val) => val && String(val).trim() !== '' ? String(val).trim() : null;
 
                     const productData = {
-                        name: name,
-                        slug: slug,
-                        
-                        // Product type - default to 'normal' if not provided
+                        name,
+                        slug,
                         product_type: row['Product Type'] || 'normal',
-                        
-                        // Safely handled unique fields
                         sku: safeValue(row['SKU']),
                         product_code: safeValue(row['Product Code']),
                         upc: safeValue(row['UPC']),
@@ -329,13 +337,11 @@ const productController = {
                         gtin: safeValue(row['GTIN']),
                         mpn: safeValue(row['MPN']),
                         model_number: safeValue(row['Model Number']),
-                        
-                        // Relationships
+
                         brand_id: parseInt(row['Brand ID']) || null,
                         category_id: parseInt(row['Category ID']) || null,
                         sub_category_id: parseInt(row['Sub Category ID']) || null,
                         child_category_id: parseInt(row['Child Category ID']) || null,
-                        // Build PC fields
                         build_pc_category_id: parseInt(row['Build PC Category ID']) || null,
                         build_pc_subcategory_id: parseInt(row['Build PC Subcategory ID']) || null,
                         build_pc_sub_subcategory_id: parseInt(row['Build PC Sub‑Subcategory ID']) || null,
@@ -343,19 +349,16 @@ const productController = {
                         short_description: row['Short Description'] || '',
                         condition: row['Condition'] || 'New',
                         color: row['Color'] || null,
-                        
-                        // Forced Status
-                        status: 'inactive', 
-                        
-                        // Financials
+
+                        status: 'inactive',
+
                         cost_price: parseFloat(row['Cost Price']) || null,
                         mrp: parseFloat(row['MRP']) || 0,
                         selling_price: parseFloat(row['Selling Price']) || 0,
                         offer_price: parseFloat(row['Offer Price']) || null,
                         tax_percentage: parseFloat(row['Tax Percentage']) || null,
-                        tax_type: 'exclusive', 
-                        
-                        // Inventory & Dimensions
+                        tax_type: 'exclusive',
+
                         stock_quantity: parseInt(row['Stock Quantity']) || 0,
                         minimum_stock_alert: parseInt(row['Minimum Stock Alert']) || 5,
                         stock_status: (parseInt(row['Stock Quantity']) > 0) ? 'in_stock' : 'out_of_stock',
@@ -363,8 +366,7 @@ const productController = {
                         height: parseFloat(row['Height']) || null,
                         width: parseFloat(row['Width']) || null,
                         depth: parseFloat(row['Depth']) || null,
-                        
-                        // JSON Fallbacks
+
                         description: JSON.stringify([]),
                         images: JSON.stringify([]),
                         key_features: JSON.stringify([]),
@@ -388,10 +390,10 @@ const productController = {
                 if (err) console.error("Failed to delete temp excel file:", err);
             });
 
-            res.status(200).json({ 
-                success: true, 
+            res.status(200).json({
+                success: true,
                 message: `Import complete. ${successCount} added. ${errors.length} failed.`,
-                errors 
+                errors
             });
 
         } catch (error) {
@@ -399,6 +401,6 @@ const productController = {
             res.status(500).json({ success: false, message: 'Failed to parse Excel file', error: error.message });
         }
     }
-}; 
+};
 
 module.exports = productController;
