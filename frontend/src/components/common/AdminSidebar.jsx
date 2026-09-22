@@ -13,14 +13,15 @@ import {
   FiChevronRight,
   FiLayers,
   FiStar,
-  FiCpu // Added FiCpu for the Build PC icon
+  FiCpu,
+  FiBookmark // 👈 NEW – icon for Pre-Bookings
 } from 'react-icons/fi';
 import './AdminSidebar.css';
 
 const AdminSidebar = ({ isCollapsed }) => {
   const location = useLocation();
   const [mastersOpen, setMastersOpen] = useState(true);
-  const [buildPcOpen, setBuildPcOpen] = useState(true); // State for new Build PC dropdown
+  const [buildPcOpen, setBuildPcOpen] = useState(true);
 
   const isActive = (path) =>
     location.pathname === path ? 'active' : '';
@@ -105,7 +106,7 @@ const AdminSidebar = ({ isCollapsed }) => {
             )}
           </li>
 
-          {/* NEW: Build PC Dropdown */}
+          {/* Build PC Dropdown */}
           <li className="sidebar-dropdown">
             <button
               type="button"
@@ -154,14 +155,6 @@ const AdminSidebar = ({ isCollapsed }) => {
                     Sub-Sub-Categories
                   </Link>
                 </li>
-                {/* <li>
-                  <Link
-                    to="/admin/build-pc-items"
-                    className={isActive('/admin/build-pc-items')}
-                  >
-                    PC Components (Items)
-                  </Link>
-                </li> */}
               </ul>
             )}
           </li>
@@ -206,6 +199,17 @@ const AdminSidebar = ({ isCollapsed }) => {
             </Link>
           </li>
 
+          {/* 👇 NEW: Pre-Bookings */}
+          <li title="Pre-Bookings">
+            <Link
+              to="/admin/prebookings"
+              className={isActive('/admin/prebookings')}
+            >
+              <FiBookmark className="nav-icon" />
+              <span className="link-text">Pre-Bookings</span>
+            </Link>
+          </li>
+
           <li title="Banners">
             <Link
               to="/admin/banners"
@@ -215,37 +219,12 @@ const AdminSidebar = ({ isCollapsed }) => {
               <span className="link-text">Banners</span>
             </Link>
           </li>
-
-          {/* <li title="Reports">
-            <Link
-              to="/admin/reports"
-              className={isActive('/admin/reports')}
-            >
-              <FiFileText className="nav-icon" />
-              <span className="link-text">Reports</span>
-            </Link>
-          </li>
-
-          <li title="Discounts">
-            <Link
-              to="/admin/discounts"
-              className={isActive('/admin/discounts')}
-            >
-              <FiPercent className="nav-icon" />
-              <span className="link-text">Discounts</span>
-            </Link>
-          </li> */}
         </ul>
 
         <div className="nav-divider"></div>
 
         <ul>
-          <li title="Settings">
-            <Link to="/admin/settings">
-              <FiSettings className="nav-icon" />
-              <span className="link-text">Settings</span>
-            </Link>
-          </li>
+          {/* Settings (commented out as before) */}
         </ul>
       </nav>
     </aside>

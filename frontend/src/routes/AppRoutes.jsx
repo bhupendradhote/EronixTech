@@ -82,6 +82,9 @@ const Customers = lazy(() => import("../pages/Admin/Customers/Customers"));
 const BannerManagement = lazy(() => import("../pages/Admin/Banners/BannerManagement"));
 const ReviewManagement = lazy(() => import("../pages/Admin/reviews/ReviewManagement"));
 
+/* 👇 NEW: Pre-Bookings Page */
+const PreBookings = lazy(() => import("../pages/Admin/PreBookings/PreBookings"));
+
 /* =========================
    GAME ZONE ADMIN LAYOUT & DASHBOARD
 ========================= */
@@ -292,6 +295,7 @@ function AppRoutes() {
           <Route path="build-pc-items" element={<BuildPcItemManagement />} />
           <Route path="brands" element={<BrandManagement />} />
           <Route path="coupons" element={<CouponManagement />} />
+          <Route path="prebookings" element={<PreBookings />} />
         </Route>
 
         {/* ================= 404 ================= */}

@@ -44,6 +44,7 @@ const salespersonRoutes = require('./routes/salespersonRoutes');
 const salesRoutes = require('./routes/salesRoutes');
 const playerRoutes = require('./routes/playerRoutes');
 const warrantyRoutes = require('./routes/warrantyRoutes');
+const preBookingRoutes = require('./routes/preBookingRoutes');
 
 const app = express();
 
@@ -112,6 +113,8 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/players', playerRoutes);
 app.use('/api/compare', compareRoutes);
 app.use('/api/warranty', warrantyRoutes);
+app.use('/api/prebookings', preBookingRoutes);
+
 
 // Start Server
 const PORT = process.env.PORT || 5000;

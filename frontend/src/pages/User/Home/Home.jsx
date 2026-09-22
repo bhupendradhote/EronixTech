@@ -1631,7 +1631,7 @@ function Home() {
           </div>
         )}
 
-        {activeProducts.length > 0 && (hasMore || loadingMore) && (
+        {/* {activeProducts.length > 0 && (hasMore || loadingMore) && (
           <div className="load-more-wrapper">
             <LoadMoreButton
               onClick={handleLoadMore}
@@ -1644,7 +1644,7 @@ function Home() {
               {totalProducts != null ? ` of ${totalProducts}` : ''} products
             </span>
           </div>
-        )}
+        )} */}
 
         {activeProducts.length > 0 && !hasMore && showingAll && (
           <div className="load-more-wrapper">

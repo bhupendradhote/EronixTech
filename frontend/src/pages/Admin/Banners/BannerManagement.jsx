@@ -34,7 +34,7 @@ const BannerManagement = () => {
   const [removeMobileImage, setRemoveMobileImage] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  const bannerTypes = ['Hero', 'Promotional', 'Sidebar', 'Footer', 'Popup'];
+  const bannerTypes = ['Hero', 'Promotional', 'Popup'];
 
   const initialFormState = {
     title: '',

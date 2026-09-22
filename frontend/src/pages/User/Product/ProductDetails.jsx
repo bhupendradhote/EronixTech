@@ -14,6 +14,7 @@ import reviewService from '../../../services/reviewService';
 import shippingService from '../../../services/shippingService';
 import wishlistService from '../../../services/wishlistService';
 import warrantyService from '../../../services/warrantyService';
+import preBookingService from '../../../services/preBookingService';   // 👈 NEW
 
 // Components
 import AuthModal from '../../User/Auth/AuthModal';
@@ -136,6 +137,29 @@ const RazorpayEmiWidget = ({ amountInRupees }) => {
   );
 };
 
+/* ─── Pre-booking form styles (inline so no CSS file change is needed) ─── */
+const preBookInputStyle = {
+  width: '100%',
+  padding: '10px 12px',
+  border: '1px solid #d1d5db',
+  borderRadius: '8px',
+  fontSize: '14px',
+  boxSizing: 'border-box',
+  outline: 'none',
+  backgroundColor: '#fff',
+  color: '#111827',
+};
+
+const preBookLabelStyle = {
+  display: 'block',
+  fontSize: '13px',
+  fontWeight: 600,
+  color: '#374151',
+  marginBottom: '6px',
+};
+
+const preBookFieldStyle = { marginBottom: '14px' };
+
 const ProductDetails = () => {
   const [searchParams] = useSearchParams();
   const { slug } = useParams();
@@ -171,6 +195,18 @@ const ProductDetails = () => {
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [extendedWarrantyAdded, setExtendedWarrantyAdded] = useState(false);
+
+  // ─── Pre-Booking States ───────────────────────────────────────────────────
+  const [showPreBookModal, setShowPreBookModal] = useState(false);
+  const [preBookSubmitting, setPreBookSubmitting] = useState(false);
+  const [preBookForm, setPreBookForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    quantity: 1,
+    pincode: '',
+    message: '',
+  });
 
   // Delivery availability (Shiprocket)
   const [deliveryPincode, setDeliveryPincode] = useState('');
@@ -430,112 +466,183 @@ const ProductDetails = () => {
     checkWishlist();
   }, [product?.id]);
 
+  // ─── Close pre-book modal on Escape ──────────────────────────────────────
+  useEffect(() => {
+    if (!showPreBookModal) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') setShowPreBookModal(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showPreBookModal]);
+
   // ─── Helpers ──────────────────────────────────────────────────────────────
   const handleVariantChange = (variant) => {
     setSelectedVariant(variant);
     setQuantity(1);
-    // Reset warranty when variant changes (optional)
     setExtendedWarrantyAdded(false);
     if (variant.image || variant.image_url) {
       setActiveImage(buildImageUrl(variant.image || variant.image_url));
     }
   };
 
-  // ─── COMPUTED TOTAL PRICE (including extended warranty) ────────────────────
-  // 🔥 FIX: Convert basePrice to a number to avoid string concatenation
+  // ─── COMPUTED TOTAL PRICE ──────────────────────────────────────────────────
   const basePrice = Number(selectedVariant?.selling_price || selectedVariant?.price || product?.selling_price || 0);
   const warrantyPrice = Number(product?.extended_warranty_price) || 0;
   const finalPrice = basePrice + (extendedWarrantyAdded ? warrantyPrice : 0);
 
   // ─── Add to Cart / Buy Now ────────────────────────────────────────────────
-
-  // Helper to add warranty to cart (assumes your cart service supports addWarranty)
-  // If not, you can modify this to add a separate cart item or combine with main product.
   const addWarrantyToCart = async (productId, variantId, warrantyPrice) => {
-    // Example: if your cart service has a dedicated method
     if (cartService.addWarranty) {
       await cartService.addWarranty(productId, variantId, warrantyPrice);
     } else {
-      // Fallback: add as a separate item with a special flag
-      // This depends on your backend; adjust accordingly.
       await cartService.addToCart(productId, 1, variantId, { isWarranty: true, warrantyPrice });
     }
   };
 
-// ─── Add to Cart / Buy Now ────────────────────────────────────────────────
+  const handleAddToCart = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return setIsAuthModalOpen(true);
 
-const handleAddToCart = async () => {
-  const token = localStorage.getItem('token');
-  if (!token) return setIsAuthModalOpen(true);
+    try {
+      await cartService.addToCart(product.id, quantity, selectedVariant?.id);
 
-  try {
-    // 1. Add main product to cart
-    await cartService.addToCart(product.id, quantity, selectedVariant?.id);
+      if (extendedWarrantyAdded && warrantyPrice > 0) {
+        await cartService.addWarrantyToCart(
+          product.id,
+          selectedVariant?.id,
+          product.extended_warranty_name,
+          warrantyPrice
+        );
+        await warrantyService.addWarranty({
+          productId: product.id,
+          variantId: selectedVariant?.id,
+          warrantyName: product.extended_warranty_name,
+          warrantyPrice: warrantyPrice,
+          totalPrice: finalPrice,
+        });
+        showToast(`Extended warranty (₹${warrantyPrice}) added to cart!`, 'success');
+      } else {
+        showToast('Successfully added to cart! 🛒');
+      }
+    } catch (err) {
+      if (err.response?.status === 401) setIsAuthModalOpen(true);
+      else showToast(err.response?.data?.message || 'Error adding to cart.', 'error');
+    }
+  };
 
-    // 2. If warranty is selected, add it as a separate cart item
-    if (extendedWarrantyAdded && warrantyPrice > 0) {
-      // Add warranty to cart (as a separate item)
-      await cartService.addWarrantyToCart(
-        product.id,
-        selectedVariant?.id,
-        product.extended_warranty_name,
-        warrantyPrice
-      );
-      // (Optional) Record the warranty purchase in the dedicated table
-      await warrantyService.addWarranty({
+  const handleBuyNow = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return setIsAuthModalOpen(true);
+
+    try {
+      await cartService.addToCart(product.id, quantity, selectedVariant?.id);
+
+      if (extendedWarrantyAdded && warrantyPrice > 0) {
+        await cartService.addWarrantyToCart(
+          product.id,
+          selectedVariant?.id,
+          product.extended_warranty_name,
+          warrantyPrice
+        );
+        await warrantyService.addWarranty({
+          productId: product.id,
+          variantId: selectedVariant?.id,
+          warrantyName: product.extended_warranty_name,
+          warrantyPrice: warrantyPrice,
+          totalPrice: finalPrice,
+        });
+        showToast(`Extended warranty (₹${warrantyPrice}) added!`, 'success');
+      }
+
+      navigate('/cart');
+    } catch (err) {
+      if (err.response?.status === 401) {
+        setIsAuthModalOpen(true);
+      } else {
+        showToast(err.response?.data?.message || 'Error processing Buy Now.', 'error');
+      }
+    }
+  };
+
+  // ─── PRE-BOOKING HANDLERS ─────────────────────────────────────────────────
+  const openPreBookModal = () => {
+    setPreBookForm((prev) => ({
+      ...prev,
+      quantity: prev.quantity || 1,
+    }));
+    setShowPreBookModal(true);
+  };
+
+  const closePreBookModal = () => {
+    if (preBookSubmitting) return;
+    setShowPreBookModal(false);
+  };
+
+  const handlePreBookChange = (field) => (event) => {
+    let value = event.target.value;
+
+    if (field === 'phone') value = value.replace(/\D/g, '').slice(0, 10);
+    else if (field === 'pincode') value = value.replace(/\D/g, '').slice(0, 6);
+    else if (field === 'quantity') value = value.replace(/\D/g, '').slice(0, 3);
+
+    setPreBookForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handlePreBookSubmit = async (event) => {
+    event.preventDefault();
+
+    const name = preBookForm.name.trim();
+    const email = preBookForm.email.trim();
+    const phone = preBookForm.phone.trim();
+    const pincode = preBookForm.pincode.trim();
+    const qty = Number(preBookForm.quantity) || 1;
+    const message = preBookForm.message.trim();
+
+    if (!name) return showToast('Please enter your full name.', 'error');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showToast('Please enter a valid email address.', 'error');
+    if (!/^\d{10}$/.test(phone)) return showToast('Please enter a valid 10-digit mobile number.', 'error');
+    if (pincode && !/^\d{6}$/.test(pincode)) return showToast('Please enter a valid 6-digit PIN code.', 'error');
+    if (!qty || qty < 1) return showToast('Please enter a valid quantity.', 'error');
+
+    try {
+      setPreBookSubmitting(true);
+
+      const payload = {
         productId: product.id,
-        variantId: selectedVariant?.id,
-        warrantyName: product.extended_warranty_name,
-        warrantyPrice: warrantyPrice,
-        totalPrice: finalPrice,
-      });
-      showToast(`Extended warranty (₹${warrantyPrice}) added to cart!`, 'success');
-    } else {
-      showToast('Successfully added to cart! 🛒');
-    }
-  } catch (err) {
-    if (err.response?.status === 401) setIsAuthModalOpen(true);
-    else showToast(err.response?.data?.message || 'Error adding to cart.', 'error');
-  }
-};
+        variantId: selectedVariant?.id || null,
+        productName: product.name,
+        variantName:
+          selectedVariant?.name ||
+          selectedVariant?.variant_name ||
+          selectedVariant?.attribute_value ||
+          null,
+        name,
+        email,
+        phone,
+        quantity: qty,
+        pincode: pincode || null,
+        message: message || null,
+      };
 
-const handleBuyNow = async () => {
-  const token = localStorage.getItem('token');
-  if (!token) return setIsAuthModalOpen(true);
+      // 👇 Use the shared service (axios) instead of raw fetch
+      await preBookingService.createPreBooking(payload);
 
-  try {
-    // 1️⃣ FIRST: Add the main product to the cart (with variant)
-    await cartService.addToCart(product.id, quantity, selectedVariant?.id);
-
-    // 2️⃣ SECOND: If warranty is selected, add it as a separate cart item
-    if (extendedWarrantyAdded && warrantyPrice > 0) {
-      await cartService.addWarrantyToCart(
-        product.id,
-        selectedVariant?.id,
-        product.extended_warranty_name,
-        warrantyPrice
+      showToast('Pre-booking request submitted successfully! 🎉', 'success');
+      setShowPreBookModal(false);
+      setPreBookForm({ name: '', email: '', phone: '', quantity: 1, pincode: '', message: '' });
+    } catch (err) {
+      showToast(
+        err?.response?.data?.message ||
+        err?.message ||
+        'Unable to submit pre-booking request.',
+        'error'
       );
-      // (Optional) Also record the warranty purchase in the warranty table
-      await warrantyService.addWarranty({
-        productId: product.id,
-        variantId: selectedVariant?.id,
-        warrantyName: product.extended_warranty_name,
-        warrantyPrice: warrantyPrice,
-        totalPrice: finalPrice,
-      });
-      showToast(`Extended warranty (₹${warrantyPrice}) added!`, 'success');
+    } finally {
+      setPreBookSubmitting(false);
     }
+  };
 
-    // 3️⃣ Navigate to the cart page
-    navigate('/cart');
-  } catch (err) {
-    if (err.response?.status === 401) {
-      setIsAuthModalOpen(true);
-    } else {
-      showToast(err.response?.data?.message || 'Error processing Buy Now.', 'error');
-    }
-  }
-};
   // ─── WISHLIST TOGGLE ──────────────────────────────────────────────────────
   const handleWishlistToggle = async () => {
     const token = localStorage.getItem('token');
@@ -603,6 +710,8 @@ const handleBuyNow = async () => {
   const discountPercent = currentMrp > basePrice
     ? Math.round(((currentMrp - basePrice) / currentMrp) * 100)
     : 0;
+
+  const isOutOfStock = currentStockStatus !== 'in_stock';
 
   const displayImages =
     Array.isArray(product?.images) && product.images.length > 0
@@ -977,6 +1086,160 @@ const handleBuyNow = async () => {
     <Layout>
       {isAuthModalOpen && <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {/* ─── Pre-Booking Modal ────────────────────────────────────────────── */}
+      {showPreBookModal && (
+        <div className="share-modal-overlay" onClick={closePreBookModal}>
+          <div
+            className="share-modal prebook-modal"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '480px', width: '100%', maxHeight: '90vh', overflowY: 'auto' }}
+          >
+            <div className="share-modal-header">
+              <span>Pre-Book This Product</span>
+              <button className="close-btn" onClick={closePreBookModal}>×</button>
+            </div>
+
+            <form onSubmit={handlePreBookSubmit} style={{ padding: '4px 20px 20px' }}>
+              {/* Product summary */}
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '12px',
+                  alignItems: 'center',
+                  padding: '12px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '10px',
+                  backgroundColor: '#f9fafb',
+                  marginBottom: '18px',
+                }}
+              >
+                <img
+                  src={activeImage || defaultImg}
+                  alt={product.name}
+                  onError={(event) => {
+                    event.currentTarget.onerror = null;
+                    event.currentTarget.src = defaultImg;
+                  }}
+                  style={{ width: '60px', height: '60px', objectFit: 'contain', borderRadius: '8px', backgroundColor: '#fff' }}
+                />
+                <div style={{ minWidth: 0 }}>
+                  <h4 style={{ margin: '0 0 4px', fontSize: '14px', color: '#111827' }}>{product.name}</h4>
+                  {(selectedVariant?.name || selectedVariant?.variant_name || selectedVariant?.attribute_value) && (
+                    <p style={{ margin: '0 0 4px', fontSize: '12px', color: '#6b7280' }}>
+                      Variant: {selectedVariant?.name || selectedVariant?.variant_name || selectedVariant?.attribute_value}
+                    </p>
+                  )}
+                  <p style={{ margin: '0 0 4px', fontSize: '14px', fontWeight: 700, color: '#111827' }}>
+                    ₹{finalPrice?.toLocaleString('en-IN')}
+                  </p>
+                  <p style={{ margin: 0, fontSize: '12px', fontWeight: 600, color: '#dc2626' }}>
+                    Out of Stock — Pre-book now
+                  </p>
+                </div>
+              </div>
+
+              {/* Full name */}
+              <div style={preBookFieldStyle}>
+                <label style={preBookLabelStyle} htmlFor="prebook-name">Full Name *</label>
+                <input
+                  id="prebook-name"
+                  type="text"
+                  style={preBookInputStyle}
+                  placeholder="Enter your full name"
+                  value={preBookForm.name}
+                  onChange={handlePreBookChange('name')}
+                  required
+                />
+              </div>
+
+              {/* Email */}
+              <div style={preBookFieldStyle}>
+                <label style={preBookLabelStyle} htmlFor="prebook-email">Email Address *</label>
+                <input
+                  id="prebook-email"
+                  type="email"
+                  style={preBookInputStyle}
+                  placeholder="you@example.com"
+                  value={preBookForm.email}
+                  onChange={handlePreBookChange('email')}
+                  required
+                />
+              </div>
+
+              {/* Phone + Quantity */}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ ...preBookFieldStyle, flex: 1 }}>
+                  <label style={preBookLabelStyle} htmlFor="prebook-phone">Mobile Number *</label>
+                  <input
+                    id="prebook-phone"
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
+                    style={preBookInputStyle}
+                    placeholder="10-digit mobile"
+                    value={preBookForm.phone}
+                    onChange={handlePreBookChange('phone')}
+                    required
+                  />
+                </div>
+                <div style={{ ...preBookFieldStyle, width: '110px' }}>
+                  <label style={preBookLabelStyle} htmlFor="prebook-qty">Quantity</label>
+                  <input
+                    id="prebook-qty"
+                    type="text"
+                    inputMode="numeric"
+                    style={preBookInputStyle}
+                    value={preBookForm.quantity}
+                    onChange={handlePreBookChange('quantity')}
+                  />
+                </div>
+              </div>
+
+              {/* Pincode */}
+              <div style={preBookFieldStyle}>
+                <label style={preBookLabelStyle} htmlFor="prebook-pincode">Delivery PIN Code</label>
+                <input
+                  id="prebook-pincode"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  style={preBookInputStyle}
+                  placeholder="6-digit PIN code (optional)"
+                  value={preBookForm.pincode}
+                  onChange={handlePreBookChange('pincode')}
+                />
+              </div>
+
+              {/* Message */}
+              <div style={preBookFieldStyle}>
+                <label style={preBookLabelStyle} htmlFor="prebook-message">Message (optional)</label>
+                <textarea
+                  id="prebook-message"
+                  rows={3}
+                  style={{ ...preBookInputStyle, resize: 'vertical' }}
+                  placeholder="Any specific requirement or note…"
+                  value={preBookForm.message}
+                  onChange={handlePreBookChange('message')}
+                />
+              </div>
+
+              <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 14px' }}>
+                Our team will contact you as soon as this product is back in stock.
+              </p>
+
+              <button
+                type="submit"
+                className="btn-buy"
+                disabled={preBookSubmitting}
+                style={{ width: '100%' }}
+              >
+                {preBookSubmitting ? 'Submitting…' : 'SUBMIT PRE-BOOKING REQUEST'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ─── Share Modal ──────────────────────────────────────────────────── */}
       {showShareModal && (
@@ -1509,36 +1772,59 @@ const handleBuyNow = async () => {
                   <input type="text" value={quantity} readOnly />
                   <button
                     onClick={() => setQuantity((q) => q + 1)}
-                    disabled={currentStockStatus !== 'in_stock'}
+                    disabled={isOutOfStock}
                   >
                     +
                   </button>
                 </div>
               </div>
 
+              {/* ─── Out-of-stock notice ─────────────────────────────────── */}
+              {isOutOfStock && (
+                <p className="prebook-note" style={{ color: '#dc2626', fontSize: '0.85rem', margin: '0 0 10px', fontWeight: 600 }}>
+                  This product is currently out of stock. Pre-book now to reserve yours.
+                </p>
+              )}
+
               <div className="action-buttons">
-                <button
-                  className="btn-cart"
-                  disabled={currentStockStatus !== 'in_stock'}
-                  onClick={handleAddToCart}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <circle cx="9" cy="21" r="1" />
-                    <circle cx="20" cy="21" r="1" />
-                    <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
-                  </svg>
-                  ADD TO CART
-                </button>
-                <button
-                  className="btn-buy"
-                  disabled={currentStockStatus !== 'in_stock'}
-                  onClick={handleBuyNow}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-                  </svg>
-                  BUY NOW
-                </button>
+                {!isOutOfStock && (
+                  <>
+                    <button
+                      className="btn-cart"
+                      onClick={handleAddToCart}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="9" cy="21" r="1" />
+                        <circle cx="20" cy="21" r="1" />
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                      </svg>
+                      ADD TO CART
+                    </button>
+
+                    <button
+                      className="btn-buy"
+                      onClick={handleBuyNow}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                      </svg>
+                      BUY NOW
+                    </button>
+                  </>
+                )}
+
+                {isOutOfStock && (
+                  <button
+                    className="btn-preorder"
+                    onClick={openPreBookModal}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      <polyline points="9 12 11 14 15 10" />
+                    </svg>
+                    PRE BOOK NOW
+                  </button>
+                )}
               </div>
 
               <div className="secure-checkout">
