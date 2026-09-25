@@ -18,6 +18,7 @@ import bannerService from '../../../services/bannerService';
 import cartService from '../../../services/cartService';
 import wishlistService from '../../../services/wishlistService';
 import reviewService from '../../../services/reviewService';
+import preBookingService from '../../../services/preBookingService';
 
 // Context
 import { useCompare } from '../../../context/CompareContext';
@@ -25,6 +26,33 @@ import { useCompare } from '../../../context/CompareContext';
 // Assets
 import defaultImg from '../../../assets/images/products/pr1.png';
 import gearUpBg from '../../../assets/images/banner/erbann.jpeg';
+
+// =============================================================
+// WhatsApp admin config
+// =============================================================
+
+const ADMIN_WHATSAPP_NUMBER = '918308010177'; // +91 8308010177
+
+const buildAdminWhatsAppMessage = (product, form, qty) => {
+  const lines = [
+    '*New Pre-Booking Request*',
+    '',
+    `*Product:* ${product?.name || '—'}`,
+    `*Price:* ₹${Number(product?.selling_price || 0).toLocaleString('en-IN')}`,
+    `*Quantity:* ${qty}`,
+    '',
+    '*Customer Details*',
+    `*Name:* ${form.name}`,
+    `*Email:* ${form.email}`,
+    `*Phone:* ${form.phone}`,
+  ];
+
+  if (form.pincode) lines.push(`*PIN Code:* ${form.pincode}`);
+  if (form.message) lines.push('', `*Note:* ${form.message}`);
+
+  lines.push('', '— Sent from EronixTech website');
+  return lines.join('\n');
+};
 
 // =============================================================
 // Helpers
@@ -131,6 +159,32 @@ const getBootState = () => {
 
   return { data: EMPTY_DATA, page: 0, hasMore: true, total: null, fromCache: false };
 };
+
+// =============================================================
+// Pre-booking form styles (inline so no CSS file change is needed)
+// =============================================================
+
+const preBookInputStyle = {
+  width: '100%',
+  padding: '10px 12px',
+  border: '1px solid #d1d5db',
+  borderRadius: '8px',
+  fontSize: '14px',
+  boxSizing: 'border-box',
+  outline: 'none',
+  backgroundColor: '#fff',
+  color: '#111827',
+};
+
+const preBookLabelStyle = {
+  display: 'block',
+  fontSize: '13px',
+  fontWeight: 600,
+  color: '#374151',
+  marginBottom: '6px',
+};
+
+const preBookFieldStyle = { marginBottom: '14px' };
 
 // =============================================================
 // SVG Icons
@@ -293,6 +347,7 @@ const ProductCard = memo(({
   categories,
   onAddToCart,
   onBuyNow,
+  onPreBookNow,
   onAddToWishlist,
   onAddToCompare,
   getProductImage,
@@ -312,12 +367,14 @@ const ProductCard = memo(({
   const reviewCount = stats?.totalReviews || 0;
 
   const isOutOfStock = product.stock_status === 'out_of_stock';
+  const isPreOrder = product.stock_status === 'pre_order';
+
   let stockStatusText = 'In Stock';
   let stockDotColor = 'var(--eronix-accent-green)';
   if (isOutOfStock) {
     stockStatusText = 'Out of Stock';
     stockDotColor = '#E63946';
-  } else if (product.stock_status === 'pre_order') {
+  } else if (isPreOrder) {
     stockStatusText = 'Pre-Order';
     stockDotColor = '#F59E0B';
   }
@@ -330,6 +387,7 @@ const ProductCard = memo(({
         <div className="ec-badges">
           {discount > 0 && <div className="ec-badge">{discount}% OFF</div>}
           {product.is_new && <div className="ec-badge" style={{ background: 'var(--eronix-primary-blue)', marginLeft: '4px' }}>NEW</div>}
+          {isPreOrder && <div className="ec-badge" style={{ background: '#F59E0B', marginLeft: '4px' }}>PRE-ORDER</div>}
         </div>
         <button
           className={`ec-wishlist-btn ${isWishlisted ? 'active' : ''}`}
@@ -385,45 +443,63 @@ const ProductCard = memo(({
       </Link>
 
       <div className="ec-actions">
+        {/* Compare — always visible */}
         <div className="action-col compare-col">
           <button className="ec-btn-compare" title="Compare" onClick={(e) => onAddToCompare(e, product)}>
             <CompareIcon />
           </button>
           <span className="ec-action-label">Compare</span>
         </div>
-        <div className="action-col">
-          <button
-            className="ec-btn-cart"
-            onClick={(e) => onAddToCart(e, product)}
-            disabled={isOutOfStock}
-            style={{ opacity: isOutOfStock ? 0.5 : 1, cursor: isOutOfStock ? 'not-allowed' : 'pointer' }}
-          >
-            <CartIcon /> Add to Cart
-          </button>
-          <span className="ec-action-label">Add product</span>
-        </div>
-        <div className="action-col">
-          <button
-            className="ec-btn-buy"
-            onClick={(e) => onBuyNow(e, product)}
-            disabled={isOutOfStock}
-            style={{
-              opacity: isOutOfStock ? 0.5 : 1,
-              cursor: isOutOfStock ? 'not-allowed' : 'pointer',
-              background: isOutOfStock ? '#A0AABF' : 'var(--eronix-accent-green)'
-            }}
-          >
-            <LightningIcon /> Buy Now
-          </button>
-          <span className="ec-action-label">Buy instantly</span>
-        </div>
+
+        {isPreOrder ? (
+          /* 👉 Only when stock_status === 'pre_order' → single PRE BOOK NOW button */
+          <div className="action-col action-col-wide">
+            <button
+              className="ec-btn-prebook"
+              onClick={(e) => onPreBookNow(e, product)}
+              title="Pre Book Now"
+            >
+              <CartIcon /> PRE BOOK NOW
+            </button>
+            <span className="ec-action-label">Reserve yours</span>
+          </div>
+        ) : (
+          <>
+            <div className="action-col">
+              <button
+                className="ec-btn-cart"
+                onClick={(e) => onAddToCart(e, product)}
+                disabled={isOutOfStock}
+                style={{ opacity: isOutOfStock ? 0.5 : 1, cursor: isOutOfStock ? 'not-allowed' : 'pointer' }}
+              >
+                <CartIcon /> Add to Cart
+              </button>
+              <span className="ec-action-label">Add product</span>
+            </div>
+            <div className="action-col">
+              <button
+                className="ec-btn-buy"
+                onClick={(e) => onBuyNow(e, product)}
+                disabled={isOutOfStock}
+                style={{
+                  opacity: isOutOfStock ? 0.5 : 1,
+                  cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+                  background: isOutOfStock ? '#A0AABF' : 'var(--eronix-accent-green)'
+                }}
+              >
+                <LightningIcon /> Buy Now
+              </button>
+              <span className="ec-action-label">Buy instantly</span>
+            </div>
+          </>
+        )}
       </div>
     </article>
   );
 });
 
 // =============================================================
-// Product Slider — Load More card rendered INSIDE the slider
+// Product Slider
 // =============================================================
 
 const ProductSlider = memo(({
@@ -435,6 +511,7 @@ const ProductSlider = memo(({
   categories,
   onAddToCart,
   onBuyNow,
+  onPreBookNow,
   onAddToWishlist,
   onAddToCompare,
   getProductImage,
@@ -506,6 +583,7 @@ const ProductSlider = memo(({
             categories={categories}
             onAddToCart={onAddToCart}
             onBuyNow={onBuyNow}
+            onPreBookNow={onPreBookNow}
             onAddToWishlist={onAddToWishlist}
             onAddToCompare={onAddToCompare}
             getProductImage={getProductImage}
@@ -549,6 +627,7 @@ const CategorySection = memo(({
   ratingStats,
   onAddToCart,
   onBuyNow,
+  onPreBookNow,
   onAddToWishlist,
   onAddToCompare,
   getProductImage,
@@ -711,6 +790,7 @@ const CategorySection = memo(({
             categories={categories}
             onAddToCart={onAddToCart}
             onBuyNow={onBuyNow}
+            onPreBookNow={onPreBookNow}
             onAddToWishlist={onAddToWishlist}
             onAddToCompare={onAddToCompare}
             getProductImage={getProductImage}
@@ -755,6 +835,19 @@ function Home() {
   const [authType, setAuthType] = useState('login');
   const [toast, setToast] = useState(null);
   const [wishlist, setWishlist] = useState([]);
+
+  // ─── Pre-Booking Modal state ───────────────────────────────────────────
+  const [showPreBookModal, setShowPreBookModal] = useState(false);
+  const [preBookSubmitting, setPreBookSubmitting] = useState(false);
+  const [preBookProduct, setPreBookProduct] = useState(null);
+  const [preBookForm, setPreBookForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    quantity: 1,
+    pincode: '',
+    message: '',
+  });
 
   const abortRef = useRef(null);
   const pageRef = useRef(boot.page);
@@ -1028,6 +1121,108 @@ function Home() {
     }
   }, [navigate, showToast]);
 
+  // ─── Pre-Booking Handlers ─────────────────────────────────────────────
+  const handlePreBookNow = useCallback((e, product) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPreBookProduct(product);
+    setPreBookForm((prev) => ({
+      ...prev,
+      quantity: prev.quantity || 1,
+    }));
+    setShowPreBookModal(true);
+  }, []);
+
+  const closePreBookModal = useCallback(() => {
+    if (preBookSubmitting) return;
+    setShowPreBookModal(false);
+    setPreBookProduct(null);
+  }, [preBookSubmitting]);
+
+  const handlePreBookChange = useCallback((field) => (event) => {
+    let value = event.target.value;
+    if (field === 'phone') value = value.replace(/\D/g, '').slice(0, 10);
+    else if (field === 'pincode') value = value.replace(/\D/g, '').slice(0, 6);
+    else if (field === 'quantity') value = value.replace(/\D/g, '').slice(0, 3);
+    setPreBookForm((prev) => ({ ...prev, [field]: value }));
+  }, []);
+
+  const handlePreBookSubmit = useCallback(async (event) => {
+    event.preventDefault();
+    if (!preBookProduct) return;
+
+    const name = preBookForm.name.trim();
+    const email = preBookForm.email.trim();
+    const phone = preBookForm.phone.trim();
+    const pincode = preBookForm.pincode.trim();
+    const qty = Number(preBookForm.quantity) || 1;
+    const message = preBookForm.message.trim();
+
+    if (!name) return showToast('Please enter your full name.', 'error');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showToast('Please enter a valid email address.', 'error');
+    if (!/^\d{10}$/.test(phone)) return showToast('Please enter a valid 10-digit mobile number.', 'error');
+    if (pincode && !/^\d{6}$/.test(pincode)) return showToast('Please enter a valid 6-digit PIN code.', 'error');
+    if (!qty || qty < 1) return showToast('Please enter a valid quantity.', 'error');
+
+    try {
+      setPreBookSubmitting(true);
+
+      const payload = {
+        productId: preBookProduct.id,
+        variantId: null,
+        productName: preBookProduct.name,
+        variantName: null,
+        name,
+        email,
+        phone,
+        quantity: qty,
+        pincode: pincode || null,
+        message: message || null,
+      };
+
+      // 1️⃣ Save to backend
+      await preBookingService.createPreBooking(payload);
+
+      // 2️⃣ Send WhatsApp message to admin with full pre-booking details
+      const waMessage = buildAdminWhatsAppMessage(preBookProduct, {
+        name,
+        email,
+        phone,
+        pincode,
+        message,
+      }, qty);
+
+      const waUrl = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(waMessage)}`;
+
+      // Open in a new tab so the current page stays intact
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
+
+      showToast('Pre-booking request submitted successfully! 🎉', 'success');
+      setShowPreBookModal(false);
+      setPreBookProduct(null);
+      setPreBookForm({ name: '', email: '', phone: '', quantity: 1, pincode: '', message: '' });
+    } catch (err) {
+      showToast(
+        err?.response?.data?.message ||
+        err?.message ||
+        'Unable to submit pre-booking request.',
+        'error'
+      );
+    } finally {
+      setPreBookSubmitting(false);
+    }
+  }, [preBookProduct, preBookForm, showToast]);
+
+  // ─── Close pre-book modal on Escape ────────────────────────────────────
+  useEffect(() => {
+    if (!showPreBookModal) return undefined;
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') closePreBookModal();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showPreBookModal, closePreBookModal]);
+
   const handleAddToWishlist = useCallback(async (e, product) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1183,6 +1378,9 @@ function Home() {
   const loadedCount = activeProducts.length;
   const showingAll = totalProducts != null && loadedCount >= totalProducts;
 
+  // Computed pre-book product image
+  const preBookImage = preBookProduct ? getProductImage(preBookProduct) : defaultImg;
+
   return (
     <Layout>
       {/* ============ POPUP BANNER — top-right, no overlay ============ */}
@@ -1192,6 +1390,142 @@ function Home() {
         <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} authType={authType} setAuthType={setAuthType} />
       )}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+      {/* ============ PRE-BOOKING MODAL ============ */}
+      {showPreBookModal && preBookProduct && (
+        <div className="home-pbk-overlay" onClick={closePreBookModal}>
+          <div
+            className="home-pbk-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="home-pbk-header">
+              <span>Pre-Book This Product</span>
+              <button className="home-pbk-close" onClick={closePreBookModal}>×</button>
+            </div>
+
+            <form onSubmit={handlePreBookSubmit} className="home-pbk-form">
+              {/* Product summary */}
+              <div className="home-pbk-product">
+                <img
+                  src={preBookImage}
+                  alt={preBookProduct.name}
+                  onError={(event) => {
+                    event.currentTarget.onerror = null;
+                    event.currentTarget.src = defaultImg;
+                  }}
+                  className="home-pbk-thumb"
+                />
+                <div className="home-pbk-product-info">
+                  <h4>{preBookProduct.name}</h4>
+                  <p className="home-pbk-price">
+                    ₹{Number(preBookProduct.selling_price || 0).toLocaleString('en-IN')}
+                  </p>
+                  <p className="home-pbk-status">Out of Stock — Pre-book now</p>
+                </div>
+              </div>
+
+              {/* Full name */}
+              <div style={preBookFieldStyle}>
+                <label style={preBookLabelStyle} htmlFor="home-pbk-name">Full Name *</label>
+                <input
+                  id="home-pbk-name"
+                  type="text"
+                  style={preBookInputStyle}
+                  placeholder="Enter your full name"
+                  value={preBookForm.name}
+                  onChange={handlePreBookChange('name')}
+                  required
+                />
+              </div>
+
+              {/* Email */}
+              <div style={preBookFieldStyle}>
+                <label style={preBookLabelStyle} htmlFor="home-pbk-email">Email Address *</label>
+                <input
+                  id="home-pbk-email"
+                  type="email"
+                  style={preBookInputStyle}
+                  placeholder="you@example.com"
+                  value={preBookForm.email}
+                  onChange={handlePreBookChange('email')}
+                  required
+                />
+              </div>
+
+              {/* Phone + Quantity */}
+              <div className="home-pbk-row">
+                <div style={{ ...preBookFieldStyle, flex: 1, marginBottom: 0 }}>
+                  <label style={preBookLabelStyle} htmlFor="home-pbk-phone">Mobile Number *</label>
+                  <input
+                    id="home-pbk-phone"
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
+                    style={preBookInputStyle}
+                    placeholder="10-digit mobile"
+                    value={preBookForm.phone}
+                    onChange={handlePreBookChange('phone')}
+                    required
+                  />
+                </div>
+                <div style={{ ...preBookFieldStyle, width: '110px', marginBottom: 0 }}>
+                  <label style={preBookLabelStyle} htmlFor="home-pbk-qty">Quantity</label>
+                  <input
+                    id="home-pbk-qty"
+                    type="text"
+                    inputMode="numeric"
+                    style={preBookInputStyle}
+                    value={preBookForm.quantity}
+                    onChange={handlePreBookChange('quantity')}
+                  />
+                </div>
+              </div>
+
+              <div style={{ height: '14px' }} />
+
+              {/* Pincode */}
+              <div style={preBookFieldStyle}>
+                <label style={preBookLabelStyle} htmlFor="home-pbk-pincode">Delivery PIN Code</label>
+                <input
+                  id="home-pbk-pincode"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  style={preBookInputStyle}
+                  placeholder="6-digit PIN code (optional)"
+                  value={preBookForm.pincode}
+                  onChange={handlePreBookChange('pincode')}
+                />
+              </div>
+
+              {/* Message */}
+              <div style={preBookFieldStyle}>
+                <label style={preBookLabelStyle} htmlFor="home-pbk-message">Message (optional)</label>
+                <textarea
+                  id="home-pbk-message"
+                  rows={3}
+                  style={{ ...preBookInputStyle, resize: 'vertical' }}
+                  placeholder="Any specific requirement or note…"
+                  value={preBookForm.message}
+                  onChange={handlePreBookChange('message')}
+                />
+              </div>
+
+              <p className="home-pbk-note">
+                On submit, your pre-booking details will be sent to our team on WhatsApp for quick confirmation.
+              </p>
+
+              <button
+                type="submit"
+                className="home-pbk-submit"
+                disabled={preBookSubmitting}
+              >
+                {preBookSubmitting ? 'Submitting…' : 'SUBMIT PRE-BOOKING REQUEST'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .slider-wrapper { position: relative; }
@@ -1231,10 +1565,10 @@ function Home() {
            ============================================================ */
         .popup-banner-root {
           position: fixed;
-          top: 84px;              /* clears a typical sticky header */
+          top: 84px;
           right: 20px;
           z-index: 9000;
-          pointer-events: none;   /* let clicks pass through the wrapper */
+          pointer-events: none;
           will-change: transform, opacity;
         }
         .popup-banner-root.is-entering {
@@ -1254,7 +1588,7 @@ function Home() {
         }
 
         .popup-banner-card {
-          pointer-events: auto;   /* re-enable for the card itself */
+          pointer-events: auto;
           position: relative;
           width: 320px;
           max-width: calc(100vw - 40px);
@@ -1339,6 +1673,196 @@ function Home() {
         .popup-banner-dot.active {
           background: #fff;
           transform: scale(1.2);
+        }
+
+        /* ============================================================
+           PRE-BOOK button (shown when stock_status === 'pre_order')
+           ============================================================ */
+        .ec-actions .action-col-wide {
+          flex: 2 1 0;
+          min-width: 0;
+        }
+        .ec-btn-prebook {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          width: 100%;
+          padding: 10px 14px;
+          background: linear-gradient(135deg, #F59E0B 0%, #F97316 100%);
+          color: #ffffff;
+          border: none;
+          border-radius: 8px;
+          font-size: 13px;
+          font-weight: 800;
+          letter-spacing: 0.4px;
+          cursor: pointer;
+          transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+          box-shadow: 0 4px 12px rgba(245, 158, 11, 0.28);
+          white-space: nowrap;
+        }
+        .ec-btn-prebook:hover {
+          background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
+          box-shadow: 0 6px 16px rgba(245, 158, 11, 0.38);
+          transform: translateY(-1px);
+        }
+        .ec-btn-prebook:active {
+          transform: translateY(0);
+          box-shadow: 0 3px 8px rgba(245, 158, 11, 0.28);
+        }
+        .ec-btn-prebook svg {
+          flex-shrink: 0;
+        }
+
+        /* ============================================================
+           HOME PRE-BOOKING MODAL
+           ============================================================ */
+        .home-pbk-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(0, 0, 0, 0.55);
+          backdrop-filter: blur(3px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 10000;
+          padding: 20px;
+          animation: homePbkFade 0.2s ease-out both;
+        }
+        @keyframes homePbkFade {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
+        .home-pbk-modal {
+          background: #fff;
+          border-radius: 14px;
+          width: 100%;
+          max-width: 480px;
+          max-height: 92vh;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+          animation: homePbkPop 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+        @keyframes homePbkPop {
+          from { opacity: 0; transform: scale(0.95) translateY(12px); }
+          to   { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .home-pbk-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 16px 20px;
+          border-bottom: 1px solid #e5e7eb;
+          background: #f9fafb;
+          font-weight: 700;
+          font-size: 16px;
+          color: #111827;
+        }
+
+        .home-pbk-close {
+          background: none;
+          border: none;
+          font-size: 24px;
+          line-height: 1;
+          color: #6b7280;
+          cursor: pointer;
+          padding: 0 4px;
+          transition: color 0.2s ease, transform 0.2s ease;
+        }
+        .home-pbk-close:hover {
+          color: #111827;
+          transform: rotate(90deg);
+        }
+
+        .home-pbk-form {
+          padding: 20px;
+          overflow-y: auto;
+        }
+
+        .home-pbk-product {
+          display: flex;
+          gap: 12px;
+          align-items: center;
+          padding: 12px;
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          background: #f9fafb;
+          margin-bottom: 18px;
+        }
+
+        .home-pbk-thumb {
+          width: 60px;
+          height: 60px;
+          object-fit: contain;
+          border-radius: 8px;
+          background: #fff;
+          flex-shrink: 0;
+        }
+
+        .home-pbk-product-info {
+          min-width: 0;
+        }
+        .home-pbk-product-info h4 {
+          margin: 0 0 4px;
+          font-size: 14px;
+          color: #111827;
+          font-weight: 600;
+          line-height: 1.3;
+        }
+        .home-pbk-price {
+          margin: 0 0 4px;
+          font-size: 14px;
+          font-weight: 700;
+          color: #111827;
+        }
+        .home-pbk-status {
+          margin: 0;
+          font-size: 12px;
+          font-weight: 600;
+          color: #dc2626;
+        }
+
+        .home-pbk-row {
+          display: flex;
+          gap: 12px;
+        }
+
+        .home-pbk-note {
+          font-size: 12px;
+          color: #6b7280;
+          margin: 0 0 14px;
+        }
+
+        .home-pbk-submit {
+          display: block;
+          width: 100%;
+          padding: 12px 18px;
+          background: linear-gradient(135deg, #F59E0B 0%, #F97316 100%);
+          color: #fff;
+          border: none;
+          border-radius: 8px;
+          font-size: 14px;
+          font-weight: 800;
+          letter-spacing: 0.4px;
+          cursor: pointer;
+          transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
+          box-shadow: 0 4px 12px rgba(245, 158, 11, 0.28);
+        }
+        .home-pbk-submit:hover:not(:disabled) {
+          background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
+          box-shadow: 0 6px 16px rgba(245, 158, 11, 0.38);
+          transform: translateY(-1px);
+        }
+        .home-pbk-submit:active:not(:disabled) {
+          transform: translateY(0);
+        }
+        .home-pbk-submit:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
         }
 
         /* ============================================================
@@ -1473,6 +1997,15 @@ function Home() {
           }
           .popup-banner-media img { max-height: 320px; }
           .popup-banner-close { width: 28px; height: 28px; top: 6px; right: 6px; }
+
+          /* Pre-book button on mobile */
+          .ec-btn-prebook { font-size: 12px; padding: 9px 10px; }
+
+          /* Pre-book modal on mobile */
+          .home-pbk-overlay { padding: 12px; align-items: flex-end; }
+          .home-pbk-modal { max-height: 94vh; border-radius: 14px 14px 0 0; }
+          .home-pbk-row { flex-direction: column; gap: 14px; }
+          .home-pbk-row > div { width: 100% !important; flex: none !important; }
         }
         @media (max-width: 380px) {
           .popup-banner-media img { max-height: 260px; }
@@ -1525,6 +2058,7 @@ function Home() {
               categories={data.categories}
               onAddToCart={handleAddToCart}
               onBuyNow={handleBuyNow}
+              onPreBookNow={handlePreBookNow}
               onAddToWishlist={handleAddToWishlist}
               onAddToCompare={handleAddToCompare}
               getProductImage={getProductImage}
@@ -1557,6 +2091,7 @@ function Home() {
               categories={data.categories}
               onAddToCart={handleAddToCart}
               onBuyNow={handleBuyNow}
+              onPreBookNow={handlePreBookNow}
               onAddToWishlist={handleAddToWishlist}
               onAddToCompare={handleAddToCompare}
               getProductImage={getProductImage}
@@ -1585,6 +2120,7 @@ function Home() {
             ratingStats={ratingStats}
             onAddToCart={handleAddToCart}
             onBuyNow={handleBuyNow}
+            onPreBookNow={handlePreBookNow}
             onAddToWishlist={handleAddToWishlist}
             onAddToCompare={handleAddToCompare}
             getProductImage={getProductImage}
@@ -1614,6 +2150,7 @@ function Home() {
               categories={data.categories}
               onAddToCart={handleAddToCart}
               onBuyNow={handleBuyNow}
+              onPreBookNow={handlePreBookNow}
               onAddToWishlist={handleAddToWishlist}
               onAddToCompare={handleAddToCompare}
               getProductImage={getProductImage}
@@ -1630,21 +2167,6 @@ function Home() {
             />
           </div>
         )}
-
-        {/* {activeProducts.length > 0 && (hasMore || loadingMore) && (
-          <div className="load-more-wrapper">
-            <LoadMoreButton
-              onClick={handleLoadMore}
-              loading={loadingMore}
-              label="Load More Products"
-              disabled={!hasMore}
-            />
-            <span className="load-more-meta">
-              Showing {loadedCount}
-              {totalProducts != null ? ` of ${totalProducts}` : ''} products
-            </span>
-          </div>
-        )} */}
 
         {activeProducts.length > 0 && !hasMore && showingAll && (
           <div className="load-more-wrapper">

@@ -24,6 +24,35 @@ import defaultImg from '../../../assets/images/products/pr1.png';
 
 const API_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000').replace(/\/$/, '');
 
+// ─── WhatsApp admin config ────────────────────────────────────────────────
+const ADMIN_WHATSAPP_NUMBER = '918308010177'; // +91 8308010177
+
+const buildAdminWhatsAppMessage = (product, form, qty, variantName) => {
+  const lines = [
+    '*New Pre-Booking Request*',
+    '',
+    `*Product:* ${product?.name || '—'}`,
+  ];
+
+  if (variantName) lines.push(`*Variant:* ${variantName}`);
+
+  lines.push(
+    `*Price:* ₹${Number(product?.selling_price || 0).toLocaleString('en-IN')}`,
+    `*Quantity:* ${qty}`,
+    '',
+    '*Customer Details*',
+    `*Name:* ${form.name}`,
+    `*Email:* ${form.email}`,
+    `*Phone:* ${form.phone}`,
+  );
+
+  if (form.pincode) lines.push(`*PIN Code:* ${form.pincode}`);
+  if (form.message) lines.push('', `*Note:* ${form.message}`);
+
+  lines.push('', '— Sent from EronixTech website');
+  return lines.join('\n');
+};
+
 const buildImageUrl = (imagePath) => {
   if (!imagePath || typeof imagePath !== 'string') return defaultImg;
 
@@ -608,15 +637,17 @@ const ProductDetails = () => {
     try {
       setPreBookSubmitting(true);
 
+      const variantName =
+        selectedVariant?.name ||
+        selectedVariant?.variant_name ||
+        selectedVariant?.attribute_value ||
+        null;
+
       const payload = {
         productId: product.id,
         variantId: selectedVariant?.id || null,
         productName: product.name,
-        variantName:
-          selectedVariant?.name ||
-          selectedVariant?.variant_name ||
-          selectedVariant?.attribute_value ||
-          null,
+        variantName,
         name,
         email,
         phone,
@@ -625,8 +656,19 @@ const ProductDetails = () => {
         message: message || null,
       };
 
-      // 👇 Use the shared service (axios) instead of raw fetch
+      // 1️⃣ Save to backend
       await preBookingService.createPreBooking(payload);
+
+      // 2️⃣ Send WhatsApp message to admin with full pre-booking details
+      const waMessage = buildAdminWhatsAppMessage(
+        product,
+        { name, email, phone, pincode, message },
+        qty,
+        variantName
+      );
+
+      const waUrl = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(waMessage)}`;
+      window.open(waUrl, '_blank', 'noopener,noreferrer');
 
       showToast('Pre-booking request submitted successfully! 🎉', 'success');
       setShowPreBookModal(false);
@@ -711,7 +753,7 @@ const ProductDetails = () => {
     ? Math.round(((currentMrp - basePrice) / currentMrp) * 100)
     : 0;
 
-  const isOutOfStock = currentStockStatus !== 'in_stock';
+  const isOutOfStock = currentStockStatus === 'pre_order';
 
   const displayImages =
     Array.isArray(product?.images) && product.images.length > 0
@@ -1225,7 +1267,7 @@ const ProductDetails = () => {
               </div>
 
               <p style={{ fontSize: '12px', color: '#6b7280', margin: '0 0 14px' }}>
-                Our team will contact you as soon as this product is back in stock.
+                On submit, your pre-booking details will be sent to our team on WhatsApp for quick confirmation.
               </p>
 
               <button
