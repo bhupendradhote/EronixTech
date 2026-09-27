@@ -31,7 +31,7 @@ import gearUpBg from '../../../assets/images/banner/erbann.jpeg';
 // WhatsApp admin config
 // =============================================================
 
-const ADMIN_WHATSAPP_NUMBER = '918308010177'; // +91 8308010177
+const ADMIN_WHATSAPP_NUMBER = '918308010177';
 
 const buildAdminWhatsAppMessage = (product, form, qty) => {
   const lines = [
@@ -161,7 +161,7 @@ const getBootState = () => {
 };
 
 // =============================================================
-// Pre-booking form styles (inline so no CSS file change is needed)
+// Pre-booking form styles
 // =============================================================
 
 const preBookInputStyle = {
@@ -384,10 +384,18 @@ const ProductCard = memo(({
   return (
     <article className="eronix-card">
       <div className="ec-header">
+        {/* Only NEW / PRE-ORDER badges remain here — % OFF moved to price row */}
         <div className="ec-badges">
-          {discount > 0 && <div className="ec-badge">{discount}% OFF</div>}
-          {product.is_new && <div className="ec-badge" style={{ background: 'var(--eronix-primary-blue)', marginLeft: '4px' }}>NEW</div>}
-          {isPreOrder && <div className="ec-badge" style={{ background: '#F59E0B', marginLeft: '4px' }}>PRE-ORDER</div>}
+          {product.is_new && (
+            <div className="ec-badge" style={{ background: 'var(--eronix-primary-blue)' }}>
+              NEW
+            </div>
+          )}
+          {isPreOrder && (
+            <div className="ec-badge" style={{ background: '#F59E0B' }}>
+              PRE-ORDER
+            </div>
+          )}
         </div>
         <button
           className={`ec-wishlist-btn ${isWishlisted ? 'active' : ''}`}
@@ -427,14 +435,35 @@ const ProductCard = memo(({
             <span className="ec-review-count">({reviewCount})</span>
           </div>
 
+          {/* ===== PRICE ROW — % OFF sits INLINE next to price ===== */}
           <div className="ec-price-row">
-            <strong className="ec-current-price">₹{product.selling_price?.toLocaleString('en-IN')}</strong>
-            {product.mrp > product.selling_price && <del className="ec-mrp">₹{product.mrp?.toLocaleString('en-IN')}</del>}
+            <strong className="ec-current-price">
+              ₹{product.selling_price?.toLocaleString('en-IN')}
+            </strong>
+
+            {product.mrp > product.selling_price && (
+              <del className="ec-mrp">
+                ₹{product.mrp?.toLocaleString('en-IN')}
+              </del>
+            )}
+
+            {discount > 0 && (
+              <span className="ec-discount-label">{discount}% OFF</span>
+            )}
           </div>
 
           <div className="ec-tags">
             <span className="ec-tag-stock" style={{ color: isOutOfStock ? '#E63946' : 'inherit' }}>
-              <span className="dot-dynamic" style={{ backgroundColor: stockDotColor, width: '8px', height: '8px', borderRadius: '50%', display: 'inline-block' }}></span>
+              <span
+                className="dot-dynamic"
+                style={{
+                  backgroundColor: stockDotColor,
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  display: 'inline-block',
+                }}
+              ></span>
               {' '}{stockStatusText}
             </span>
             <span className="ec-tag-delivery"><TruckIcon /> {deliveryText}</span>
@@ -452,7 +481,7 @@ const ProductCard = memo(({
         </div>
 
         {isPreOrder ? (
-          /* 👉 Only when stock_status === 'pre_order' → single PRE BOOK NOW button */
+          /* 👉 Pre-order products: single PRE BOOK NOW button */
           <div className="action-col action-col-wide">
             <button
               className="ec-btn-prebook"
@@ -470,13 +499,16 @@ const ProductCard = memo(({
                 className="ec-btn-cart"
                 onClick={(e) => onAddToCart(e, product)}
                 disabled={isOutOfStock}
-                style={{ opacity: isOutOfStock ? 0.5 : 1, cursor: isOutOfStock ? 'not-allowed' : 'pointer' }}
+                style={{
+                  opacity: isOutOfStock ? 0.5 : 1,
+                  cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+                }}
               >
                 <CartIcon /> Add to Cart
               </button>
               <span className="ec-action-label">Add product</span>
             </div>
-            <div className="action-col">
+            <div className="action-col buy-now-col">
               <button
                 className="ec-btn-buy"
                 onClick={(e) => onBuyNow(e, product)}
@@ -484,7 +516,7 @@ const ProductCard = memo(({
                 style={{
                   opacity: isOutOfStock ? 0.5 : 1,
                   cursor: isOutOfStock ? 'not-allowed' : 'pointer',
-                  background: isOutOfStock ? '#A0AABF' : 'var(--eronix-accent-green)'
+                  background: isOutOfStock ? '#A0AABF' : 'var(--eronix-accent-green)',
                 }}
               >
                 <LightningIcon /> Buy Now
@@ -836,7 +868,6 @@ function Home() {
   const [toast, setToast] = useState(null);
   const [wishlist, setWishlist] = useState([]);
 
-  // ─── Pre-Booking Modal state ───────────────────────────────────────────
   const [showPreBookModal, setShowPreBookModal] = useState(false);
   const [preBookSubmitting, setPreBookSubmitting] = useState(false);
   const [preBookProduct, setPreBookProduct] = useState(null);
@@ -891,7 +922,6 @@ function Home() {
     String(text || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
   , []);
 
-  // ---------- Wishlist ----------
   useEffect(() => {
     const fetchWishlist = async () => {
       const token = localStorage.getItem('token');
@@ -904,7 +934,6 @@ function Home() {
     fetchWishlist();
   }, [isAuthModalOpen]);
 
-  // ---------- Initial data fetch ----------
   useEffect(() => {
     const controller = new AbortController();
     const { signal } = controller;
@@ -970,15 +999,6 @@ function Home() {
       setLoading(false);
 
       writeCache(nextData, { page: INITIAL_PAGE_COUNT, hasMore: more, total });
-
-      console.log('[Home] Data ready:', {
-        products: nextData.products.length,
-        categories: nextData.categories.length,
-        brands: nextData.brands.length,
-        banners: nextData.banners.length,
-        total,
-        hasMore: more,
-      });
     };
 
     run().catch((err) => {
@@ -989,7 +1009,6 @@ function Home() {
     return () => controller.abort();
   }, []);
 
-  // ---------- Load more ----------
   const handleLoadMore = useCallback(async () => {
     if (loadingMoreRef.current || !hasMoreRef.current) return;
 
@@ -1041,7 +1060,6 @@ function Home() {
     }
   }, [showToast]);
 
-  // ---------- Ratings ----------
   useEffect(() => {
     if (data.products.length === 0) return;
 
@@ -1088,7 +1106,6 @@ function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.products]);
 
-  // ---------- Actions ----------
   const handleAddToCart = useCallback(async (e, product) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1121,7 +1138,6 @@ function Home() {
     }
   }, [navigate, showToast]);
 
-  // ─── Pre-Booking Handlers ─────────────────────────────────────────────
   const handlePreBookNow = useCallback((e, product) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1180,10 +1196,8 @@ function Home() {
         message: message || null,
       };
 
-      // 1️⃣ Save to backend
       await preBookingService.createPreBooking(payload);
 
-      // 2️⃣ Send WhatsApp message to admin with full pre-booking details
       const waMessage = buildAdminWhatsAppMessage(preBookProduct, {
         name,
         email,
@@ -1194,7 +1208,6 @@ function Home() {
 
       const waUrl = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(waMessage)}`;
 
-      // Open in a new tab so the current page stays intact
       window.open(waUrl, '_blank', 'noopener,noreferrer');
 
       showToast('Pre-booking request submitted successfully! 🎉', 'success');
@@ -1213,7 +1226,6 @@ function Home() {
     }
   }, [preBookProduct, preBookForm, showToast]);
 
-  // ─── Close pre-book modal on Escape ────────────────────────────────────
   useEffect(() => {
     if (!showPreBookModal) return undefined;
     const handleKeyDown = (event) => {
@@ -1272,7 +1284,6 @@ function Home() {
     }
   }, []);
 
-  // ---------- Derived data ----------
   const activeProducts = useMemo(
     () => data.products.filter(p => p.status === 'active' || p.status === undefined),
     [data.products]
@@ -1378,12 +1389,10 @@ function Home() {
   const loadedCount = activeProducts.length;
   const showingAll = totalProducts != null && loadedCount >= totalProducts;
 
-  // Computed pre-book product image
   const preBookImage = preBookProduct ? getProductImage(preBookProduct) : defaultImg;
 
   return (
     <Layout>
-      {/* ============ POPUP BANNER — top-right, no overlay ============ */}
       <PopupBanner banners={processedBanners.popup} maxItems={1} />
 
       {isAuthModalOpen && (
@@ -1404,7 +1413,6 @@ function Home() {
             </div>
 
             <form onSubmit={handlePreBookSubmit} className="home-pbk-form">
-              {/* Product summary */}
               <div className="home-pbk-product">
                 <img
                   src={preBookImage}
@@ -1424,7 +1432,6 @@ function Home() {
                 </div>
               </div>
 
-              {/* Full name */}
               <div style={preBookFieldStyle}>
                 <label style={preBookLabelStyle} htmlFor="home-pbk-name">Full Name *</label>
                 <input
@@ -1438,7 +1445,6 @@ function Home() {
                 />
               </div>
 
-              {/* Email */}
               <div style={preBookFieldStyle}>
                 <label style={preBookLabelStyle} htmlFor="home-pbk-email">Email Address *</label>
                 <input
@@ -1452,7 +1458,6 @@ function Home() {
                 />
               </div>
 
-              {/* Phone + Quantity */}
               <div className="home-pbk-row">
                 <div style={{ ...preBookFieldStyle, flex: 1, marginBottom: 0 }}>
                   <label style={preBookLabelStyle} htmlFor="home-pbk-phone">Mobile Number *</label>
@@ -1483,7 +1488,6 @@ function Home() {
 
               <div style={{ height: '14px' }} />
 
-              {/* Pincode */}
               <div style={preBookFieldStyle}>
                 <label style={preBookLabelStyle} htmlFor="home-pbk-pincode">Delivery PIN Code</label>
                 <input
@@ -1498,7 +1502,6 @@ function Home() {
                 />
               </div>
 
-              {/* Message */}
               <div style={preBookFieldStyle}>
                 <label style={preBookLabelStyle} htmlFor="home-pbk-message">Message (optional)</label>
                 <textarea
@@ -1543,26 +1546,8 @@ function Home() {
         .slider-wrapper .slider-btn.left { left: 10px; }
         .slider-wrapper .slider-btn.right { right: 10px; }
         .slider-wrapper .slider-btn:hover { background: #fff; border-color: #009DFF; }
-        .popular-searches { background: #fff; padding: 32px 24px; border-radius: 12px; margin: 40px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-        .popular-search-container { margin: 0 auto; }
-        .search-heading { font-size: 18px; font-weight: 700; color: #1a202c; margin-bottom: 20px; padding-left: 4px; }
-        .pwa-row { display: flex; flex-direction: row; gap: 16px; flex-wrap: wrap; }
-        .popular-search-wraper {
-          display: flex; align-items: baseline; flex-wrap: wrap;
-          gap: 8px 16px; padding: 10px 0;
-          border-bottom: 1px solid #f0f0f0; width: 49%;
-        }
-        .popular-search-wraper:last-child { border-bottom: none; }
-        .category-heading { font-weight: 700; font-size: 13px; color: #1a202c; min-width: 120px; }
-        .sub-categories { display: flex; flex-wrap: wrap; gap: 4px 16px; }
-        .sub-categories a { color: #4a5568; font-size: 13px; text-decoration: none; transition: color 0.2s; position: relative; }
-        .sub-categories a::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 0; height: 1px; background: #009DFF; transition: width 0.2s; }
-        .sub-categories a:hover { color: #009DFF; }
-        .sub-categories a:hover::after { width: 100%; }
 
-        /* ============================================================
-           POPUP BANNER — top-right corner, no overlay, smooth slide-in
-           ============================================================ */
+        /* POPUP BANNER */
         .popup-banner-root {
           position: fixed;
           top: 84px;
@@ -1586,7 +1571,6 @@ function Home() {
           0%   { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
           100% { opacity: 0; transform: translate3d(60px, -6px, 0) scale(0.97); }
         }
-
         .popup-banner-card {
           pointer-events: auto;
           position: relative;
@@ -1600,7 +1584,6 @@ function Home() {
             0 3px 10px rgba(11, 18, 32, 0.08);
           border: 1px solid rgba(11, 18, 32, 0.06);
         }
-
         .popup-banner-media {
           display: block;
           width: 100%;
@@ -1617,86 +1600,52 @@ function Home() {
           object-fit: cover;
           transition: transform 0.4s ease;
         }
-        .popup-banner-media:hover img {
-          transform: scale(1.02);
-        }
-
+        .popup-banner-media:hover img { transform: scale(1.02); }
         .popup-banner-close {
-          position: absolute;
-          top: 8px;
-          right: 8px;
-          z-index: 3;
-          width: 30px;
-          height: 30px;
-          border-radius: 50%;
+          position: absolute; top: 8px; right: 8px; z-index: 3;
+          width: 30px; height: 30px; border-radius: 50%;
           background: rgba(255, 255, 255, 0.95);
           border: 1px solid rgba(0, 0, 0, 0.08);
           color: #111827;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+          display: flex; align-items: center; justify-content: center;
           cursor: pointer;
           box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
           transition: transform 0.25s ease, background 0.2s ease, color 0.2s ease;
         }
         .popup-banner-close:hover {
-          background: #009DFF;
-          color: #fff;
-          transform: rotate(90deg);
+          background: #009DFF; color: #fff; transform: rotate(90deg);
         }
-        .popup-banner-close:active {
-          transform: rotate(90deg) scale(0.92);
-        }
-
+        .popup-banner-close:active { transform: rotate(90deg) scale(0.92); }
         .popup-banner-dots {
-          position: absolute;
-          bottom: 10px;
-          left: 50%;
+          position: absolute; bottom: 10px; left: 50%;
           transform: translateX(-50%);
-          display: flex;
-          gap: 6px;
+          display: flex; gap: 6px;
           padding: 5px 9px;
           background: rgba(0, 0, 0, 0.35);
-          border-radius: 999px;
-          z-index: 2;
+          border-radius: 999px; z-index: 2;
         }
         .popup-banner-dot {
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
+          width: 7px; height: 7px; border-radius: 50%;
           border: none;
           background: rgba(255, 255, 255, 0.55);
-          cursor: pointer;
-          padding: 0;
+          cursor: pointer; padding: 0;
           transition: background 0.2s ease, transform 0.2s ease;
         }
-        .popup-banner-dot.active {
-          background: #fff;
-          transform: scale(1.2);
-        }
+        .popup-banner-dot.active { background: #fff; transform: scale(1.2); }
 
-        /* ============================================================
-           PRE-BOOK button (shown when stock_status === 'pre_order')
-           ============================================================ */
+        /* PRE-BOOK button */
         .ec-actions .action-col-wide {
           flex: 2 1 0;
           min-width: 0;
         }
         .ec-btn-prebook {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          width: 100%;
+          display: flex; align-items: center; justify-content: center;
+          gap: 6px; width: 100%;
           padding: 10px 14px;
           background: linear-gradient(135deg, #F59E0B 0%, #F97316 100%);
-          color: #ffffff;
-          border: none;
-          border-radius: 8px;
-          font-size: 13px;
-          font-weight: 800;
-          letter-spacing: 0.4px;
-          cursor: pointer;
+          color: #ffffff; border: none; border-radius: 8px;
+          font-size: 13px; font-weight: 800;
+          letter-spacing: 0.4px; cursor: pointer;
           transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
           box-shadow: 0 4px 12px rgba(245, 158, 11, 0.28);
           white-space: nowrap;
@@ -1710,38 +1659,23 @@ function Home() {
           transform: translateY(0);
           box-shadow: 0 3px 8px rgba(245, 158, 11, 0.28);
         }
-        .ec-btn-prebook svg {
-          flex-shrink: 0;
-        }
+        .ec-btn-prebook svg { flex-shrink: 0; }
 
-        /* ============================================================
-           HOME PRE-BOOKING MODAL
-           ============================================================ */
+        /* HOME PRE-BOOKING MODAL */
         .home-pbk-overlay {
-          position: fixed;
-          inset: 0;
+          position: fixed; inset: 0;
           background: rgba(0, 0, 0, 0.55);
           backdrop-filter: blur(3px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 10000;
-          padding: 20px;
+          display: flex; align-items: center; justify-content: center;
+          z-index: 10000; padding: 20px;
           animation: homePbkFade 0.2s ease-out both;
         }
-        @keyframes homePbkFade {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
+        @keyframes homePbkFade { from { opacity: 0; } to { opacity: 1; } }
         .home-pbk-modal {
-          background: #fff;
-          border-radius: 14px;
-          width: 100%;
-          max-width: 480px;
+          background: #fff; border-radius: 14px;
+          width: 100%; max-width: 480px;
           max-height: 92vh;
-          display: flex;
-          flex-direction: column;
+          display: flex; flex-direction: column;
           overflow: hidden;
           box-shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
           animation: homePbkPop 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
@@ -1750,105 +1684,52 @@ function Home() {
           from { opacity: 0; transform: scale(0.95) translateY(12px); }
           to   { opacity: 1; transform: scale(1) translateY(0); }
         }
-
         .home-pbk-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
+          display: flex; align-items: center; justify-content: space-between;
           padding: 16px 20px;
           border-bottom: 1px solid #e5e7eb;
           background: #f9fafb;
-          font-weight: 700;
-          font-size: 16px;
-          color: #111827;
+          font-weight: 700; font-size: 16px; color: #111827;
         }
-
         .home-pbk-close {
-          background: none;
-          border: none;
-          font-size: 24px;
-          line-height: 1;
-          color: #6b7280;
-          cursor: pointer;
-          padding: 0 4px;
+          background: none; border: none;
+          font-size: 24px; line-height: 1; color: #6b7280;
+          cursor: pointer; padding: 0 4px;
           transition: color 0.2s ease, transform 0.2s ease;
         }
-        .home-pbk-close:hover {
-          color: #111827;
-          transform: rotate(90deg);
-        }
-
-        .home-pbk-form {
-          padding: 20px;
-          overflow-y: auto;
-        }
-
+        .home-pbk-close:hover { color: #111827; transform: rotate(90deg); }
+        .home-pbk-form { padding: 20px; overflow-y: auto; }
         .home-pbk-product {
-          display: flex;
-          gap: 12px;
-          align-items: center;
+          display: flex; gap: 12px; align-items: center;
           padding: 12px;
-          border: 1px solid #e5e7eb;
-          border-radius: 10px;
-          background: #f9fafb;
-          margin-bottom: 18px;
+          border: 1px solid #e5e7eb; border-radius: 10px;
+          background: #f9fafb; margin-bottom: 18px;
         }
-
         .home-pbk-thumb {
-          width: 60px;
-          height: 60px;
-          object-fit: contain;
-          border-radius: 8px;
-          background: #fff;
-          flex-shrink: 0;
+          width: 60px; height: 60px;
+          object-fit: contain; border-radius: 8px;
+          background: #fff; flex-shrink: 0;
         }
-
-        .home-pbk-product-info {
-          min-width: 0;
-        }
+        .home-pbk-product-info { min-width: 0; }
         .home-pbk-product-info h4 {
-          margin: 0 0 4px;
-          font-size: 14px;
-          color: #111827;
-          font-weight: 600;
-          line-height: 1.3;
+          margin: 0 0 4px; font-size: 14px; color: #111827;
+          font-weight: 600; line-height: 1.3;
         }
         .home-pbk-price {
-          margin: 0 0 4px;
-          font-size: 14px;
-          font-weight: 700;
-          color: #111827;
+          margin: 0 0 4px; font-size: 14px; font-weight: 700; color: #111827;
         }
         .home-pbk-status {
-          margin: 0;
-          font-size: 12px;
-          font-weight: 600;
-          color: #dc2626;
+          margin: 0; font-size: 12px; font-weight: 600; color: #dc2626;
         }
-
-        .home-pbk-row {
-          display: flex;
-          gap: 12px;
-        }
-
-        .home-pbk-note {
-          font-size: 12px;
-          color: #6b7280;
-          margin: 0 0 14px;
-        }
-
+        .home-pbk-row { display: flex; gap: 12px; }
+        .home-pbk-note { font-size: 12px; color: #6b7280; margin: 0 0 14px; }
         .home-pbk-submit {
-          display: block;
-          width: 100%;
+          display: block; width: 100%;
           padding: 12px 18px;
           background: linear-gradient(135deg, #F59E0B 0%, #F97316 100%);
-          color: #fff;
-          border: none;
-          border-radius: 8px;
-          font-size: 14px;
-          font-weight: 800;
-          letter-spacing: 0.4px;
-          cursor: pointer;
+          color: #fff; border: none; border-radius: 8px;
+          font-size: 14px; font-weight: 800;
+          letter-spacing: 0.4px; cursor: pointer;
           transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease;
           box-shadow: 0 4px 12px rgba(245, 158, 11, 0.28);
         }
@@ -1857,25 +1738,15 @@ function Home() {
           box-shadow: 0 6px 16px rgba(245, 158, 11, 0.38);
           transform: translateY(-1px);
         }
-        .home-pbk-submit:active:not(:disabled) {
-          transform: translateY(0);
-        }
-        .home-pbk-submit:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
+        .home-pbk-submit:active:not(:disabled) { transform: translateY(0); }
+        .home-pbk-submit:disabled { opacity: 0.7; cursor: not-allowed; }
 
-        /* ============================================================
-           IN-SLIDER Load More card
-           ============================================================ */
+        /* IN-SLIDER Load More card */
         .slider-load-more-card {
           flex: 0 0 auto;
-          width: 230px;
-          min-height: 360px;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
+          width: 230px; min-height: 360px;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
           gap: 12px;
           background: linear-gradient(160deg, #F3F9FF 0%, #E6F2FE 100%);
           border: 2px dashed var(--eronix-primary-blue, #009DFF);
@@ -1886,8 +1757,7 @@ function Home() {
           text-align: center;
           font-family: inherit;
           transition: transform .2s ease, box-shadow .25s ease, background .25s ease, border-color .25s ease;
-          position: relative;
-          overflow: hidden;
+          position: relative; overflow: hidden;
         }
         .slider-load-more-card::before {
           content: '';
@@ -1906,7 +1776,6 @@ function Home() {
         .slider-load-more-card:active:not(:disabled) { transform: translateY(0); }
         .slider-load-more-card:disabled { cursor: not-allowed; opacity: .75; }
         .slider-load-more-card.is-loading { border-style: solid; }
-
         .slm-icon-wrap {
           width: 54px; height: 54px; border-radius: 50%;
           background: #fff;
@@ -1914,29 +1783,21 @@ function Home() {
           box-shadow: 0 6px 16px rgba(0,157,255,.18);
           color: var(--eronix-primary-blue, #009DFF);
           transition: transform .25s ease, background .25s ease, color .25s ease;
-          position: relative;
-          z-index: 1;
+          position: relative; z-index: 1;
         }
         .slider-load-more-card:hover:not(:disabled) .slm-icon-wrap {
           background: var(--eronix-primary-blue, #009DFF);
-          color: #fff;
-          transform: scale(1.06);
+          color: #fff; transform: scale(1.06);
         }
         .slm-title {
-          font-size: 14.5px;
-          font-weight: 800;
-          letter-spacing: .4px;
-          line-height: 1.25;
-          position: relative;
-          z-index: 1;
+          font-size: 14.5px; font-weight: 800;
+          letter-spacing: .4px; line-height: 1.25;
+          position: relative; z-index: 1;
         }
         .slm-hint {
-          font-size: 11.5px;
-          font-weight: 500;
-          color: #4B5563;
-          letter-spacing: .3px;
-          position: relative;
-          z-index: 1;
+          font-size: 11.5px; font-weight: 500;
+          color: #4B5563; letter-spacing: .3px;
+          position: relative; z-index: 1;
         }
         .slm-spinner {
           width: 22px; height: 22px; border-radius: 50%;
@@ -1945,22 +1806,24 @@ function Home() {
           animation: lmSpin .7s linear infinite;
         }
         .electrical-products .slider-load-more-card {
-          width: 210px;
-          min-height: 340px;
+          width: 210px; min-height: 340px;
         }
 
-        /* ---------- Bottom (global) Load More ---------- */
+        /* Bottom Load More */
         .load-more-wrapper {
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
           gap: 8px; margin: 22px 0 8px; width: 100%;
         }
         .load-more-btn {
-          display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-          min-width: 220px; padding: 12px 34px; border-radius: 999px;
+          display: inline-flex; align-items: center; justify-content: center;
+          gap: 10px; min-width: 220px;
+          padding: 12px 34px; border-radius: 999px;
           border: 1.5px solid var(--eronix-primary-blue, #009DFF);
           background: #fff; color: var(--eronix-primary-blue, #009DFF);
           font-size: 14px; font-weight: 700; letter-spacing: .3px;
-          cursor: pointer; transition: background .25s ease, color .25s ease, box-shadow .25s ease, transform .15s ease;
+          cursor: pointer;
+          transition: background .25s ease, color .25s ease, box-shadow .25s ease, transform .15s ease;
         }
         .load-more-btn:hover:not(:disabled) {
           background: var(--eronix-primary-blue, #009DFF); color: #fff;
@@ -1971,37 +1834,28 @@ function Home() {
         .load-more-arrow { font-size: 15px; line-height: 1; }
         .load-more-spinner {
           width: 15px; height: 15px; border-radius: 50%;
-          border: 2px solid currentColor; border-top-color: transparent;
+          border: 2px solid currentColor;
+          border-top-color: transparent;
           animation: lmSpin .7s linear infinite;
         }
         .load-more-meta { font-size: 12.5px; color: #6B7280; letter-spacing: .2px; }
         @keyframes lmSpin { to { transform: rotate(360deg); } }
 
         @media (max-width: 640px) {
-          .popular-search-wraper { flex-direction: column; align-items: flex-start; gap: 4px; }
-          .category-heading { min-width: auto; }
-          .sub-categories { gap: 4px 12px; }
           .load-more-btn { width: 100%; min-width: 0; }
           .slider-load-more-card { width: 190px; min-height: 320px; }
 
-          /* Popup responsive — still top-right, tighter */
           .popup-banner-root {
-            top: 70px;
-            right: 12px;
-            left: 12px;
+            top: 70px; right: 12px; left: 12px;
           }
           .popup-banner-card {
-            width: 100%;
-            max-width: 100%;
-            border-radius: 12px;
+            width: 100%; max-width: 100%; border-radius: 12px;
           }
           .popup-banner-media img { max-height: 320px; }
           .popup-banner-close { width: 28px; height: 28px; top: 6px; right: 6px; }
 
-          /* Pre-book button on mobile */
-          .ec-btn-prebook { font-size: 12px; padding: 9px 10px; }
+          .ec-btn-prebook { font-size: 8px; padding: 9px 10px; }
 
-          /* Pre-book modal on mobile */
           .home-pbk-overlay { padding: 12px; align-items: flex-end; }
           .home-pbk-modal { max-height: 94vh; border-radius: 14px 14px 0 0; }
           .home-pbk-row { flex-direction: column; gap: 14px; }

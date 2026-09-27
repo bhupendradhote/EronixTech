@@ -1828,7 +1828,8 @@ const ProductDetails = () => {
                 </p>
               )}
 
-              <div className="action-buttons">
+              {/* 👇 Use a modifier class instead of a wrapper */}
+              <div className={`action-buttons ${isOutOfStock ? 'prebook-mode' : ''}`}>
                 {!isOutOfStock && (
                   <>
                     <button
@@ -1856,16 +1857,39 @@ const ProductDetails = () => {
                 )}
 
                 {isOutOfStock && (
-                  <button
-                    className="btn-preorder"
-                    onClick={openPreBookModal}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                      <polyline points="9 12 11 14 15 10" />
-                    </svg>
-                    PRE BOOK NOW
-                  </button>
+                  <>
+                    <button
+                      className="btn-preorder"
+                      onClick={openPreBookModal}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                        <polyline points="9 12 11 14 15 10" />
+                      </svg>
+                      PRE BOOK NOW
+                    </button>
+
+                    {/* 👇 Mobile-only wishlist button next to PRE BOOK NOW */}
+                    <button
+                      type="button"
+                      className={`btn-preorder-wishlist ${isWishlisted ? 'active' : ''}`}
+                      onClick={handleWishlistToggle}
+                      aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+                    >
+                      <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill={isWishlisted ? '#ef4444' : 'none'}
+                        stroke={isWishlisted ? '#ef4444' : 'currentColor'}
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                      </svg>
+                    </button>
+                  </>
                 )}
               </div>
 
@@ -2062,6 +2086,67 @@ const ProductDetails = () => {
         </div>
 
       </div>
+
+      {/* ─── Inline styles for mobile-only Pre-Book Wishlist button ──────── */}
+      <style>{`
+        /* Hide mobile-only wishlist button on desktop */
+        .btn-preorder-wishlist {
+          display: none;
+        }
+
+        /*
+         * On mobile, force the action-buttons container into a horizontal row
+         * when in pre-book mode, so PRE BOOK NOW + wishlist sit side-by-side
+         * and fill the full width — no empty space.
+         */
+        @media (max-width: 768px) {
+          .action-buttons.prebook-mode {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+            width: 100% !important;
+          }
+
+          .action-buttons.prebook-mode .btn-preorder {
+            flex: 1 1 auto !important;
+            width: auto !important;
+            min-width: 0 !important;
+            order: 1;
+          }
+
+          .action-buttons.prebook-mode .btn-preorder-wishlist {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 52px !important;
+            width: 52px !important;
+            min-width: 52px !important;
+            max-width: 52px !important;
+            padding: 0 !important;
+            order: 2;
+            background: #ffffff;
+            color: #4b5563;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+          }
+
+          .action-buttons.prebook-mode .btn-preorder-wishlist:hover {
+            background: #f9fafb;
+            border-color: #ef4444;
+            color: #ef4444;
+          }
+
+          .action-buttons.prebook-mode .btn-preorder-wishlist.active {
+            background: #fef2f2;
+            border-color: #ef4444;
+            color: #ef4444;
+          }
+        }
+      `}</style>
     </Layout>
   );
 };

@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import categoryService from '../../services/categoryService';
@@ -8,6 +9,10 @@ import searchService from '../../services/searchService';
 import './Header.css';
 import AuthModal from '../../pages/User/Auth/AuthModal';
 import logo from '../../assets/images/logo/eronix.png';
+
+// Fixed dropdown width (used to clamp position against viewport edges)
+const DROPDOWN_WIDTH = 620;
+const EDGE_MARGIN = 16;
 
 const Header = () => {
     const { user, isAuthenticated, logout } = useAuth();
@@ -37,15 +42,16 @@ const Header = () => {
     const headerRef = useRef(null);
     const [headerHeight, setHeaderHeight] = useState(0);
 
-    // --- Infinite Carousel State ---
-    const [currentSlide, setCurrentSlide] = useState(0);
-    const [itemWidth, setItemWidth] = useState(0);
-    const [isTransitioning, setIsTransitioning] = useState(false);
-    const carouselInnerRef = useRef(null);
-    const carouselWrapperRef = useRef(null);
-    const touchStartX = useRef(0);
-    const touchCurrentX = useRef(0);
-    const isDragging = useRef(false);
+    // --- Simple horizontal scroll (no infinite loop) ---
+    const categoryScrollRef = useRef(null);
+    const [canScrollLeft, setCanScrollLeft] = useState(false);
+    const [canScrollRight, setCanScrollRight] = useState(false);
+
+    // --- Category Hover Dropdown State ---
+    const [hoveredCategory, setHoveredCategory] = useState(null);
+    const [dropdownPos, setDropdownPos] = useState({ left: 0, top: 0, arrowLeft: DROPDOWN_WIDTH / 2 });
+    const hoverTimeoutRef = useRef(null);
+    const dropdownRef = useRef(null);
 
     // --- Sidebar close on outside click ---
     useEffect(() => {
@@ -66,11 +72,11 @@ const Header = () => {
         };
     }, [isSidebarOpen]);
 
-    // --- Fetch categories ---
+    // --- Fetch categories (WITH subcategories) ---
     useEffect(() => {
         const fetchCategories = async () => {
             try {
-                const data = await categoryService.getAllCategories(true, false);
+                const data = await categoryService.getAllCategories(true, true);
                 setCategories(data || []);
             } catch (error) {
                 console.error("Failed to fetch categories:", error);
@@ -312,123 +318,41 @@ const Header = () => {
         }
     };
 
-    // --- Infinite Carousel logic ---
-    const totalItems = categories.length;
-    // We need at least 3 copies for infinite loop (middle copy is the visible one)
-    const duplicatedCategories = totalItems > 0 ? [...categories, ...categories, ...categories] : [];
-    const slideCount = duplicatedCategories.length;
+    // --- Horizontal scroll handlers (simple, no infinite loop) ---
+    const updateScrollButtons = () => {
+        const el = categoryScrollRef.current;
+        if (!el) return;
+        const atLeft = el.scrollLeft <= 1;
+        const atRight = el.scrollLeft + el.clientWidth >= el.scrollWidth - 1;
+        setCanScrollLeft(!atLeft);
+        setCanScrollRight(!atRight);
+    };
 
-    // Compute item width (including gap) on mount and resize
     useEffect(() => {
-        const computeItemWidth = () => {
-            if (carouselInnerRef.current && totalItems > 0) {
-                const firstItem = carouselInnerRef.current.children[0];
-                if (firstItem) {
-                    const style = window.getComputedStyle(firstItem);
-                    const marginLeft = parseFloat(style.marginLeft) || 0;
-                    const marginRight = parseFloat(style.marginRight) || 0;
-                    // Get gap from parent (flex gap)
-                    const parentStyle = window.getComputedStyle(carouselInnerRef.current);
-                    const gap = parseFloat(parentStyle.gap) || 0;
-                    const width = firstItem.offsetWidth + marginLeft + marginRight + gap;
-                    setItemWidth(width);
-                }
-            }
+        updateScrollButtons();
+        const el = categoryScrollRef.current;
+        if (!el) return undefined;
+        el.addEventListener('scroll', updateScrollButtons, { passive: true });
+        window.addEventListener('resize', updateScrollButtons);
+        return () => {
+            el.removeEventListener('scroll', updateScrollButtons);
+            window.removeEventListener('resize', updateScrollButtons);
         };
-        computeItemWidth();
-        window.addEventListener('resize', computeItemWidth);
-        return () => window.removeEventListener('resize', computeItemWidth);
-    }, [categories, totalItems]);
+    }, [categories]);
 
-    // Set initial slide to the start of the middle copy
-    useEffect(() => {
-        if (totalItems > 0) {
-            setCurrentSlide(totalItems);
-        }
-    }, [totalItems]);
+    const scrollCategoriesLeft = () => {
+        const el = categoryScrollRef.current;
+        if (!el) return;
+        el.scrollBy({ left: -320, behavior: 'smooth' });
+        setHoveredCategory(null);
+    };
 
-    // Transition end: reset position if at the end or beginning to create infinite loop
-    const handleTransitionEnd = useCallback(() => {
-        if (!isTransitioning) return;
-        setIsTransitioning(false);
-        // If we are at the end of the last copy, jump to the start of the middle copy
-        if (currentSlide >= totalItems * 2) {
-            setCurrentSlide(totalItems);
-            // Disable transition for the jump
-            if (carouselInnerRef.current) {
-                carouselInnerRef.current.style.transition = 'none';
-            }
-            requestAnimationFrame(() => {
-                if (carouselInnerRef.current) {
-                    carouselInnerRef.current.style.transition = '';
-                }
-            });
-        } else if (currentSlide < totalItems) {
-            // If we are at the start of the first copy, jump to the start of the middle copy
-            setCurrentSlide(totalItems);
-            if (carouselInnerRef.current) {
-                carouselInnerRef.current.style.transition = 'none';
-            }
-            requestAnimationFrame(() => {
-                if (carouselInnerRef.current) {
-                    carouselInnerRef.current.style.transition = '';
-                }
-            });
-        }
-    }, [currentSlide, totalItems, isTransitioning]);
-
-    // Navigate to next/prev
-    const goToSlide = useCallback((index) => {
-        if (isTransitioning) return;
-        setIsTransitioning(true);
-        setCurrentSlide(index);
-    }, [isTransitioning]);
-
-    const nextSlide = useCallback(() => {
-        if (totalItems === 0 || isTransitioning) return;
-        goToSlide(currentSlide + 1);
-    }, [currentSlide, totalItems, isTransitioning, goToSlide]);
-
-    const prevSlide = useCallback(() => {
-        if (totalItems === 0 || isTransitioning) return;
-        goToSlide(currentSlide - 1);
-    }, [currentSlide, totalItems, isTransitioning, goToSlide]);
-
-    // Touch events for swipe
-    const handleTouchStart = useCallback((e) => {
-        touchStartX.current = e.touches[0].clientX;
-        touchCurrentX.current = touchStartX.current;
-        isDragging.current = true;
-    }, []);
-
-    const handleTouchMove = useCallback((e) => {
-        if (!isDragging.current) return;
-        touchCurrentX.current = e.touches[0].clientX;
-        // Optionally add a drag effect (translate the inner container) but we skip for simplicity
-    }, []);
-
-    const handleTouchEnd = useCallback(() => {
-        if (!isDragging.current) return;
-        isDragging.current = false;
-        const diff = touchStartX.current - touchCurrentX.current;
-        const threshold = 50; // minimum swipe distance
-        if (Math.abs(diff) > threshold) {
-            if (diff > 0) {
-                nextSlide();
-            } else {
-                prevSlide();
-            }
-        }
-    }, [nextSlide, prevSlide]);
-
-    // Clean up transition end listener
-    useEffect(() => {
-        const inner = carouselInnerRef.current;
-        if (inner) {
-            inner.addEventListener('transitionend', handleTransitionEnd);
-            return () => inner.removeEventListener('transitionend', handleTransitionEnd);
-        }
-    }, [handleTransitionEnd]);
+    const scrollCategoriesRight = () => {
+        const el = categoryScrollRef.current;
+        if (!el) return;
+        el.scrollBy({ left: 320, behavior: 'smooth' });
+        setHoveredCategory(null);
+    };
 
     // --- Measure header height ---
     useEffect(() => {
@@ -480,6 +404,90 @@ const Header = () => {
         };
     }, []);
 
+    // --- Close hover dropdown on scroll / resize ---
+    useEffect(() => {
+        if (!hoveredCategory) return undefined;
+        const close = () => setHoveredCategory(null);
+        window.addEventListener('scroll', close, { passive: true });
+        window.addEventListener('resize', close);
+        return () => {
+            window.removeEventListener('scroll', close);
+            window.removeEventListener('resize', close);
+        };
+    }, [hoveredCategory]);
+
+    // --- Cleanup hover timeout on unmount ---
+    useEffect(() => {
+        return () => {
+            if (hoverTimeoutRef.current) {
+                clearTimeout(hoverTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    // --- Category hover handlers ---
+    const clearHoverTimeout = () => {
+        if (hoverTimeoutRef.current) {
+            clearTimeout(hoverTimeoutRef.current);
+            hoverTimeoutRef.current = null;
+        }
+    };
+
+    const handleCategoryEnter = (e, cat) => {
+        const subs = cat?.sub_categories || cat?.subcategories || [];
+        if (!subs || subs.length === 0) return;
+
+        clearHoverTimeout();
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const viewportW = window.innerWidth;
+        const halfW = DROPDOWN_WIDTH / 2;
+
+        const desiredCenterX = rect.left + rect.width / 2;
+
+        const minCenter = halfW + EDGE_MARGIN;
+        const maxCenter = viewportW - halfW - EDGE_MARGIN;
+
+        let clampedCenterX;
+        if (minCenter > maxCenter) {
+            clampedCenterX = viewportW / 2;
+        } else {
+            clampedCenterX = Math.max(minCenter, Math.min(desiredCenterX, maxCenter));
+        }
+
+        let arrowLeft = DROPDOWN_WIDTH / 2 + (desiredCenterX - clampedCenterX);
+        const arrowMin = 24;
+        const arrowMax = DROPDOWN_WIDTH - 24;
+        arrowLeft = Math.max(arrowMin, Math.min(arrowLeft, arrowMax));
+
+        setDropdownPos({
+            left: clampedCenterX,
+            top: rect.bottom,
+            arrowLeft,
+        });
+        setHoveredCategory(cat);
+    };
+
+    const handleCategoryLeave = () => {
+        clearHoverTimeout();
+        hoverTimeoutRef.current = setTimeout(() => {
+            setHoveredCategory(null);
+            hoverTimeoutRef.current = null;
+        }, 150);
+    };
+
+    const handleDropdownEnter = () => {
+        clearHoverTimeout();
+    };
+
+    const handleDropdownLeave = () => {
+        clearHoverTimeout();
+        hoverTimeoutRef.current = setTimeout(() => {
+            setHoveredCategory(null);
+            hoverTimeoutRef.current = null;
+        }, 150);
+    };
+
     const userFullName = user?.full_name || user?.email || 'User';
     const firstName = userFullName.split(' ')[0];
 
@@ -529,17 +537,22 @@ const Header = () => {
         padding: '1px 4px'
     };
 
-    // Render only if categories exist
+    // Render categories — NO duplication anymore
     const renderCategories = () => {
-        if (totalItems === 0) {
+        if (categories.length === 0) {
             return <div style={{ padding: '0.5rem 0', color: '#fff' }}>Loading categories...</div>;
         }
-        return duplicatedCategories.map((cat, index) => (
+        return categories.map((cat) => (
             <Link
-                key={`${cat.id}-${index}`}
+                key={cat.id}
                 to={`/category/${cat.slug}`}
                 className="cat-wrap"
-                onClick={() => setIsSidebarOpen(false)}
+                onMouseEnter={(e) => handleCategoryEnter(e, cat)}
+                onMouseLeave={handleCategoryLeave}
+                onClick={() => {
+                    setIsSidebarOpen(false);
+                    setHoveredCategory(null);
+                }}
             >
                 <img
                     src={cat.icon_url || `https://picsum.photos/seed/${cat.id}/80/80`}
@@ -550,6 +563,11 @@ const Header = () => {
             </Link>
         ));
     };
+
+    // Get subcategories for the hovered category
+    const hoveredSubs = hoveredCategory
+        ? (hoveredCategory.sub_categories || hoveredCategory.subcategories || [])
+        : [];
 
     return (
         <>
@@ -766,48 +784,40 @@ const Header = () => {
                 </div>
             </header>
 
-            {/* Category bar - Infinite Carousel */}
+            {/* Category bar - Simple horizontal scroll (no infinite loop) */}
             <div
                 className={`category-bar desktop-category-bar ${isCategorySticky ? 'is-sticky' : ''}`}
                 ref={categoryBarRef}
                 style={{ top: `${headerHeight}px` }}
             >
                 <div className="container" style={{ position: 'relative' }}>
-                    {totalItems > 0 && (
+                    {categories.length > 0 && (
                         <>
                             <button
                                 className="scroll-btn left"
-                                onClick={prevSlide}
+                                onClick={scrollCategoriesLeft}
                                 aria-label="Scroll left"
-                                disabled={isTransitioning}
+                                disabled={!canScrollLeft}
                             >
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <polyline points="15 18 9 12 15 6" />
                                 </svg>
                             </button>
+
                             <div
                                 className="category-carousel-wrapper"
-                                ref={carouselWrapperRef}
-                                onTouchStart={handleTouchStart}
-                                onTouchMove={handleTouchMove}
-                                onTouchEnd={handleTouchEnd}
+                                ref={categoryScrollRef}
                             >
-                                <div
-                                    className="category-carousel-inner"
-                                    ref={carouselInnerRef}
-                                    style={{
-                                        transform: `translateX(-${currentSlide * itemWidth}px)`,
-                                        transition: isTransitioning ? 'transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94)' : 'none',
-                                    }}
-                                >
+                                <div className="category-carousel-inner">
                                     {renderCategories()}
                                 </div>
                             </div>
+
                             <button
                                 className="scroll-btn right"
-                                onClick={nextSlide}
+                                onClick={scrollCategoriesRight}
                                 aria-label="Scroll right"
-                                disabled={isTransitioning}
+                                disabled={!canScrollRight}
                             >
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                     <polyline points="9 18 15 12 9 6" />
@@ -817,6 +827,67 @@ const Header = () => {
                     )}
                 </div>
             </div>
+
+            {/* ============================================================
+                CATEGORY HOVER DROPDOWN — 3-column grid, clamped to viewport
+               ============================================================ */}
+            {hoveredCategory && hoveredSubs.length > 0 && typeof document !== 'undefined' && createPortal(
+                <div
+                    className="category-dropdown-portal"
+                    style={{
+                        left: `${dropdownPos.left}px`,
+                        top: `${dropdownPos.top}px`,
+                    }}
+                    onMouseEnter={handleDropdownEnter}
+                    onMouseLeave={handleDropdownLeave}
+                >
+                    <div
+                        className="category-dropdown"
+                        ref={dropdownRef}
+                        style={{ width: `${DROPDOWN_WIDTH}px` }}
+                    >
+                        <span
+                            className="category-dropdown-arrow"
+                            style={{ left: `${dropdownPos.arrowLeft}px` }}
+                        />
+                        <div className="category-dropdown-header">
+                            <span className="category-dropdown-title">{hoveredCategory.name}</span>
+                            <Link
+                                to={`/category/${hoveredCategory.slug}`}
+                                className="category-dropdown-viewall"
+                                onClick={() => setHoveredCategory(null)}
+                            >
+                                View All →
+                            </Link>
+                        </div>
+                        <div className="category-dropdown-grid">
+                            {hoveredSubs.map((sub) => {
+                                const subId = sub.id ?? sub.sub_category_id;
+                                const to = `/category/${hoveredCategory.slug}?sub=${subId}`;
+                                return (
+                                    <Link
+                                        key={sub.id ?? sub.name}
+                                        to={to}
+                                        className="category-dropdown-item"
+                                        onClick={() => setHoveredCategory(null)}
+                                    >
+                                        {sub.icon_url && (
+                                            <img
+                                                src={sub.icon_url}
+                                                alt={sub.name}
+                                                loading="lazy"
+                                                onError={(e) => { e.target.style.display = 'none'; }}
+                                            />
+                                        )}
+                                        <span>{sub.name}</span>
+                                    </Link>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
 
             {/* Mobile Sidebar */}
             <div className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`} onClick={toggleSidebar} />
@@ -854,7 +925,7 @@ const Header = () => {
                     </button>
                 </div>
 
-                {/* Sidebar Search (optional) */}
+                {/* Sidebar Search */}
                 <div className="sidebar-search">
                     <input type="text" placeholder="Search products..." value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
@@ -953,7 +1024,7 @@ const Header = () => {
                 setAuthType={setAuthType}
             />
 
-            {/* Inline styles for sticky category bar and carousel */}
+            {/* Inline styles */}
             <style>{`
                 /* Make header sticky */
                 .header {
@@ -969,7 +1040,6 @@ const Header = () => {
                     z-index: 999;
                     background: #fff;
                     box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-                    
                     will-change: auto;
                 }
 
@@ -995,19 +1065,25 @@ const Header = () => {
                     padding: 4px 0;
                 }
 
-                /* Carousel styles */
+                /* Simple horizontal scroll — no infinite loop */
                 .category-carousel-wrapper {
-                    overflow: hidden;
+                    overflow-x: auto;
+                    overflow-y: hidden;
                     width: 100%;
                     position: relative;
+                    scrollbar-width: none;
+                    -ms-overflow-style: none;
+                    scroll-behavior: smooth;
+                }
+                .category-carousel-wrapper::-webkit-scrollbar {
+                    display: none;
                 }
 
                 .category-carousel-inner {
                     display: flex;
                     gap: 1.5rem;
                     padding: 0.5rem 0;
-                    will-change: transform;
-                    touch-action: pan-y;
+                    width: max-content;
                 }
 
                 .cat-wrap {
@@ -1083,7 +1159,7 @@ const Header = () => {
                     box-shadow: 0 4px 10px rgba(0,0,0,0.15);
                 }
                 .scroll-btn:disabled {
-                    opacity: 0.4;
+                    opacity: 0.35;
                     cursor: not-allowed;
                 }
                 .scroll-btn.left {
@@ -1094,6 +1170,142 @@ const Header = () => {
                     right: 0;
                     margin-right: -6px;
                 }
+
+                /* ============================================================
+                   CATEGORY HOVER DROPDOWN — 3-column grid, viewport-clamped
+                   ============================================================ */
+                .category-dropdown-portal {
+                    position: fixed;
+                    z-index: 2000;
+                    transform: translateX(-50%);
+                    animation: catDropdownIn 0.18s ease-out;
+                    pointer-events: auto;
+                }
+
+                @keyframes catDropdownIn {
+                    from { opacity: 0; transform: translateX(-50%) translateY(-6px); }
+                    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+                }
+
+                .category-dropdown {
+                    position: relative;
+                    background: #ffffff;
+                    border-radius: 14px;
+                    border: 1px solid var(--divider-color);
+                    box-shadow:
+                        0 12px 36px rgba(11, 18, 32, 0.14),
+                        0 3px 10px rgba(11, 18, 32, 0.06);
+                    padding: 16px 18px;
+                    margin-top: 12px;
+                    max-width: calc(100vw - 32px);
+                    box-sizing: border-box;
+                }
+
+                .category-dropdown-arrow {
+                    position: absolute;
+                    top: -7px;
+                    width: 12px;
+                    height: 12px;
+                    background: #ffffff;
+                    border-left: 1px solid var(--divider-color);
+                    border-top: 1px solid var(--divider-color);
+                    transform: translateX(-50%) rotate(45deg);
+                    pointer-events: none;
+                }
+
+                .category-dropdown-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 16px;
+                    padding-bottom: 12px;
+                    margin-bottom: 12px;
+                    border-bottom: 1px solid var(--divider-color);
+                }
+
+                .category-dropdown-title {
+                    font-size: 13px;
+                    font-weight: 800;
+                    color: var(--text-color);
+                    letter-spacing: 0.5px;
+                    text-transform: uppercase;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+
+                .category-dropdown-viewall {
+                    font-size: 12px;
+                    font-weight: 700;
+                    color: var(--primary-blue);
+                    text-decoration: none;
+                    white-space: nowrap;
+                    transition: color 0.15s;
+                }
+                .category-dropdown-viewall:hover {
+                    color: var(--secondary-blue);
+                    text-decoration: underline;
+                }
+
+                /* ============ 3-COLUMN GRID ============ */
+                .category-dropdown-grid {
+                    display: grid;
+                    grid-template-columns: repeat(3, minmax(0, 1fr));
+                    gap: 4px 12px;
+                    max-height: 340px;
+                    overflow-y: auto;
+                    padding-right: 4px;
+                }
+
+                .category-dropdown-grid::-webkit-scrollbar {
+                    width: 5px;
+                }
+                .category-dropdown-grid::-webkit-scrollbar-thumb {
+                    background: #d1d5db;
+                    border-radius: 4px;
+                }
+                .category-dropdown-grid::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+
+                .category-dropdown-item {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    padding: 8px 10px;
+                    border-radius: 8px;
+                    color: var(--text-color);
+                    text-decoration: none;
+                    font-size: 13px;
+                    font-weight: 500;
+                    line-height: 1.3;
+                    transition: background 0.15s, color 0.15s;
+                    min-width: 0;
+                }
+
+                .category-dropdown-item:hover {
+                    background: rgba(0, 141, 255, 0.08);
+                    color: var(--primary-blue);
+                }
+
+                .category-dropdown-item img {
+                    width: 26px;
+                    height: 26px;
+                    border-radius: 6px;
+                    object-fit: cover;
+                    flex-shrink: 0;
+                    background: #f5f7fa;
+                    border: 1px solid var(--divider-color);
+                }
+
+                .category-dropdown-item span {
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                    flex: 1;
+                    min-width: 0;
+                }
+
                 @media (max-width: 768px) {
                     .scroll-btn {
                         width: 28px;
@@ -1105,6 +1317,10 @@ const Header = () => {
                     }
                     .category-bar.is-sticky .cat-wrap {
                         padding: 6px 10px;
+                    }
+                    /* Dropdown is desktop-only */
+                    .category-dropdown-portal {
+                        display: none !important;
                     }
                 }
             `}</style>

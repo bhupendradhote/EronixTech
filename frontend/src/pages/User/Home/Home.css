@@ -180,22 +180,45 @@ body {
   color: var(--eronix-text-secondary);
   font-size: 12px;
 }
+
+/* ============================================================
+   PRICE ROW — % OFF sits INLINE next to price
+   ============================================================ */
 .ec-price-row {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 8px;
   margin-bottom: 12px;
 }
 .ec-current-price {
   color: var(--eronix-price-red);
   font-size: 20px;
   font-weight: 700;
+  line-height: 1.2;
 }
 .ec-mrp {
   color: var(--eronix-text-secondary);
   font-size: 14px;
   text-decoration: line-through;
+  line-height: 1.2;
 }
+.ec-discount-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  border-radius: 4px;
+  line-height: 1.5;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.25);
+}
+
 .ec-tags {
   display: flex;
   gap: 12px;
@@ -518,13 +541,12 @@ body {
 
 
 /* ============================================================
-   ELECTRICAL/ACCESSORIES BLOCK (Exact match to reference image)
+   ELECTRICAL/ACCESSORIES BLOCK
    ============================================================ */
 .electrical-section-wrapper {
   margin: 50px 0;
 }
 
-/* 1. The Header Strip */
 .img-style-header {
   display: flex;
   justify-content: space-between;
@@ -573,7 +595,6 @@ body {
   border-radius: 12px;
 }
 
-/* 2. Top Row Container */
 .img-style-top-row {
   display: flex;
   gap: 20px;
@@ -581,12 +602,10 @@ body {
   align-items: stretch;
 }
 
-/* 3. Left Block (Brands Box) */
 .img-brands-block {
   flex: 0 0 28%;
   background: var(--eronix-card-bg);
   border-radius: 16px;
-  /* padding: 24px; */
   display: flex;
   flex-direction: column;
   position: relative;
@@ -600,7 +619,7 @@ body {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
-      padding: 0 20px;
+  padding: 0 20px;
 }
 .img-brands-header h3 {
   font-size: 11px;
@@ -653,8 +672,6 @@ body {
   gap: 10px;
   padding-top: 5px;
   border-top: 1px solid #F3F4F6;
-  /* margin-bottom: 40px; */
-  /* Space for wave text */
 }
 .img-badge {
   display: flex;
@@ -689,7 +706,6 @@ body {
   line-height: 1.2;
 }
 
-/* --- UPDATED: Gear Up section with background image (bann22.jpeg) --- */
 .img-gear-up-text {
   width: 100%;
   min-height: 140px;
@@ -698,10 +714,8 @@ body {
   background-position: 25% !important;
   background-repeat: no-repeat !important;
   margin-top: 8px;
-  /* No overlay or text – image contains its own message */
 }
 
-/* 4. Right Block (Categories) */
 .img-categories-block {
   flex: 1;
   display: grid;
@@ -718,13 +732,11 @@ body {
   cursor: pointer;
   position: relative;
   min-height: 250px;
-  /* Gives the card a fixed height so the background can fill it */
 }
 .img-cat-card:hover {
   transform: translateY(-5px);
 }
 
-/* New Full Background Image Styling */
 .img-cat-bg {
   position: absolute;
   top: 0;
@@ -732,21 +744,16 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* Ensures the image completely fills the card */
   object-position: center;
   z-index: 1;
   mix-blend-mode: multiply;
-  /* Blends the image with the pastel background color */
   opacity: 0.9;
 }
 
-/* Foreground Text Container */
 .img-cat-text {
   position: relative;
   z-index: 2;
-  /* Ensures text stays above the background image */
   padding: 24px 20px;
-  /* display: flex; */
   flex-direction: column;
   gap: 8px;
   height: 100%;
@@ -776,7 +783,6 @@ body {
   align-items: center;
   gap: 6px;
   margin-top: auto;
-  /* Pushes the explore link to the bottom if desired, or remove to keep it under the p tag */
 }
 
 .img-arrow-circle {
@@ -789,7 +795,6 @@ body {
   justify-content: center;
   font-size: 12px;
 }
-/* 5. Footer Strip */
 .img-footer-strip {
   display: flex;
   align-items: center;
@@ -1142,7 +1147,6 @@ body {
     font-size: 13px;
   }
 
-  /* Electrical section - categories grid */
   .img-categories-block {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -1152,8 +1156,6 @@ body {
 @media (max-width: 768px) {
   /* ---- Hero Banner Height ---- */
   .hero-wrap {
-    /* height: 50vh !important;
-    min-height: 300px !important; */
     margin: 10px 0 !important;
   }
   .hero-wrap .slide,
@@ -1163,20 +1165,34 @@ body {
     object-fit: cover;
   }
 
-  /* ---- Product Card: Hide Buy Now ---- */
-  .ec-actions .action-col:last-child {
+  /* ============================================================
+     Product Card actions
+     - Only hide the Buy Now column (buy-now-col)
+     - KEEP pre-book column (action-col-wide) visible
+     ============================================================ */
+  .ec-actions .buy-now-col {
     display: none !important;
   }
-  .ec-actions .action-col:first-child {
+  .ec-actions .compare-col {
     flex: 0 0 44px !important;
   }
-  .ec-actions .action-col:nth-child(2) {
+  .ec-actions .action-col:not(.compare-col) {
+    flex: 1 !important;
+  }
+  /* Make sure pre-book column always shows on mobile */
+  .ec-actions .action-col-wide {
+    display: flex !important;
     flex: 1 !important;
   }
   .ec-btn-cart {
     width: 100% !important;
     min-width: unset !important;
     font-size: 11px;
+  }
+  .ec-btn-prebook {
+    font-size: 11px;
+    padding: 8px 10px;
+    letter-spacing: 0.2px;
   }
 
   /* ---- Quick Categories: Grid 3 columns ---- */
@@ -1216,7 +1232,6 @@ body {
     padding: 0 4px;
   }
 
-  /* Hide slider buttons on mobile (touch scroll) */
   .slider-btn {
     display: none !important;
   }
@@ -1252,12 +1267,23 @@ body {
   .ec-review-count {
     font-size: 10px;
   }
+
+  /* Price row + % OFF on mobile */
+  .ec-price-row {
+    gap: 4px 6px;
+    margin-bottom: 8px;
+  }
   .ec-current-price {
     font-size: 15px;
   }
   .ec-mrp {
     font-size: 12px;
   }
+  .ec-discount-label {
+    font-size: 10px;
+    padding: 1px 6px;
+  }
+
   .ec-tags {
     gap: 6px;
     flex-wrap: wrap;
@@ -1365,7 +1391,6 @@ body {
     grid-template-columns: repeat(3, 1fr);
   }
 
-  /* Brands grid inside left block */
   .img-brands-grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -1373,12 +1398,10 @@ body {
     grid-template-columns: repeat(4, 1fr);
   }
 
-  /* Gear Up section on mobile */
   .img-gear-up-text {
     min-height: 100px;
   }
 
-  /* Category cards height adjust */
   .img-cat-card {
     min-height: 200px;
   }
@@ -1386,7 +1409,6 @@ body {
     font-size: 17px;
   }
 
-  /* Header */
   .img-style-header {
     flex-direction: column;
     align-items: flex-start;
@@ -1459,7 +1481,7 @@ body {
   }
 }
 
-/* ----- Very small phones: keep 2 cards but even tighter ----- */
+/* ----- Very small phones ----- */
 @media (max-width: 420px) {
   .eronix-card {
     width: calc(50% - 4px);
@@ -1486,12 +1508,24 @@ body {
   .ec-title {
     font-size: 11px;
   }
+
+  /* Price + % OFF on very small */
+  .ec-price-row {
+    gap: 3px 5px;
+    margin-bottom: 6px;
+  }
   .ec-current-price {
     font-size: 13px;
   }
   .ec-mrp {
     font-size: 10px;
   }
+  .ec-discount-label {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
   .ec-btn-cart {
     min-width: 50px;
     font-size: 9px;
@@ -1512,6 +1546,14 @@ body {
   }
   .compare-col {
     width: 30px;
+  }
+  .ec-btn-prebook {
+    font-size: 10px;
+    padding: 6px 6px;
+  }
+  .ec-btn-prebook svg {
+    width: 12px;
+    height: 12px;
   }
   .ec-action-label {
     font-size: 7px;
@@ -1557,7 +1599,6 @@ body {
     gap: 6px;
   }
 
-  /* Electrical categories: 3 columns on very small */
   .img-categories-block {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -1572,10 +1613,9 @@ body {
   }
   .img-trust-badges {
     grid-template-columns: repeat(4, 1fr);
-    display: none; /* Hide trust badges on very small screens */
+    display: none;
   }
 
-  /* Gear Up section on very small */
   .img-gear-up-text {
     min-height: 80px;
   }
@@ -1591,7 +1631,7 @@ body {
   }
 }
 
-/* ----- Hero banner responsiveness (already good, but small tweak) ----- */
+/* ----- Hero banner responsiveness ----- */
 @media (max-width: 768px) {
   .hero-wrap .slider-btn {
     width: 36px;
